@@ -326,12 +326,12 @@ function WorkspaceView() {
                   <Search className="h-4 w-4 text-text-secondary" />
                   <label
                     htmlFor="query-input"
-                    className="font-sans text-xs font-bold uppercase tracking-wider text-text-primary"
+                    className="font-display text-xs font-bold uppercase tracking-wider text-text-primary"
                   >
                     Financial Intelligence Inquiry
                   </label>
                 </div>
-                <span className="font-sans text-[11px] uppercase tracking-wider text-text-secondary font-medium">
+                <span className="font-body text-[11px] uppercase tracking-wider text-text-secondary font-medium italic">
                   Dataset: SaaS_Q2_Financials.csv
                 </span>
               </div>
@@ -351,7 +351,7 @@ function WorkspaceView() {
                   }}
                   rows={2}
                   placeholder="Ask a deterministic question about your financials (e.g. margin variance, cost overruns, budget drifts)..."
-                  className="w-full resize-none rounded-lg border border-noir bg-bg-canvas p-3.5 font-sans text-sm text-text-primary placeholder:text-text-muted focus:border-text-secondary focus:outline-none transition-colors"
+                  className="w-full resize-none rounded-lg border border-noir bg-bg-canvas p-3.5 font-body text-sm text-text-primary placeholder:text-text-muted focus:border-text-secondary focus:outline-none transition-colors"
                 />
               </div>
 
@@ -359,7 +359,7 @@ function WorkspaceView() {
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                 {/* 3 Clickable Suggestion Chips (Outlined Sepia Pills matching Landing Page) */}
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-sans text-[10px] font-bold uppercase tracking-widest text-text-secondary mr-1">
+                  <span className="font-display text-[10px] font-bold uppercase tracking-widest text-text-secondary mr-1">
                     Suggestions:
                   </span>
                   {promptSuggestions.map((promptText) => (
@@ -370,7 +370,7 @@ function WorkspaceView() {
                         setQuery(promptText);
                         handleStartAnalysis(promptText);
                       }}
-                      className="rounded-full border border-noir px-3.5 py-1 font-sans text-[10px] font-semibold uppercase tracking-widest text-text-secondary bg-transparent hover:border-text-primary hover:text-text-primary transition-colors cursor-pointer"
+                      className="rounded-full border border-noir px-3.5 py-1 font-body text-[10px] font-bold uppercase tracking-widest text-text-secondary bg-transparent hover:border-text-primary hover:text-text-primary transition-colors cursor-pointer"
                     >
                       {promptText}
                     </button>
@@ -383,7 +383,7 @@ function WorkspaceView() {
                     <button
                       type="button"
                       onClick={handleCancelAnalysis}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-accent-rust bg-bg-canvas px-3 py-2 font-sans text-xs font-semibold uppercase tracking-wider text-accent-rust hover:bg-accent-rust/10 transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-accent-rust bg-bg-canvas px-3 py-2 font-body text-xs font-bold uppercase tracking-wider text-accent-rust hover:bg-accent-rust/10 transition-colors cursor-pointer"
                     >
                       <XCircle className="h-3.5 w-3.5" />
                       <span>Cancel Analysis</span>
@@ -394,7 +394,7 @@ function WorkspaceView() {
                     type="button"
                     disabled={isRunning || !query.trim()}
                     onClick={() => handleStartAnalysis()}
-                    className={`inline-flex items-center gap-2 rounded-md px-5 py-2 font-sans text-xs font-semibold uppercase tracking-wider transition-colors shadow-none ${
+                    className={`inline-flex items-center gap-2 rounded-md px-5 py-2 font-body text-xs font-bold uppercase tracking-wider transition-colors shadow-none ${
                       isRunning || !query.trim()
                         ? "bg-bg-surface-subtle text-text-muted cursor-not-allowed border border-noir"
                         : "bg-accent-contrast text-bg-canvas hover:opacity-90 cursor-pointer"
@@ -503,22 +503,22 @@ function WorkspaceView() {
                   <div className="relative z-10 flex flex-col items-center justify-end h-full px-8 py-10 text-center" style={{ minHeight: '290px' }}>
                     {/* Classification tag */}
                     <div className="mb-4 inline-flex items-center gap-2">
-                      <span className="font-sans text-[10px] font-bold uppercase tracking-[0.2em] text-text-secondary">
+                      <span className="font-body text-[10px] font-bold uppercase tracking-[0.2em] text-text-secondary">
                         Mission Active
                       </span>
                       <span className="text-text-secondary/40 text-[10px]">//</span>
-                      <span className="font-sans text-[10px] font-bold uppercase tracking-[0.2em] text-text-secondary">
+                      <span className="font-body text-[10px] font-bold uppercase tracking-[0.2em] text-text-secondary">
                         Dataset Loaded
                       </span>
                     </div>
 
-                    {/* Serif headline */}
-                    <h3 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-text-primary mb-3">
+                    {/* Display headline */}
+                    <h3 className="font-display text-2xl sm:text-3xl font-bold uppercase tracking-tight text-text-primary mb-3">
                       Awaiting Investigation Parameters
                     </h3>
 
                     {/* Narrative subtext */}
-                    <p className="mx-auto max-w-lg font-sans text-xs leading-relaxed text-text-secondary">
+                    <p className="mx-auto max-w-lg font-body text-xs leading-relaxed text-text-secondary">
                       Select a suggestion chip above or dispatch M, Q, Eve, and 007
                       to analyze ledger variance with deterministic receipts.
                     </p>

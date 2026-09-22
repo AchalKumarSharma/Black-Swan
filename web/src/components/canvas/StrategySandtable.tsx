@@ -59,27 +59,27 @@ export const StrategySandtable: React.FC<StrategySandtableProps> = ({
               <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-[#b89b82]">
                 <ShieldAlert className="h-4 w-4" />
               </div>
-              <span className="font-serif text-base font-bold text-[#f0eae0] leading-none tracking-tight">
+              <span className="font-display text-base font-bold uppercase tracking-tight text-[#f0eae0] leading-none">
                 Stage 5: Remedial Strategy &amp; Executive Action
               </span>
               <span className="text-[#b89b82]/40 mx-2 text-xs">|</span>
-              <span className="text-xs uppercase tracking-wider font-sans font-medium text-[#b89b82]">
+              <span className="text-xs uppercase tracking-wider font-body font-medium italic text-[#b89b82]">
                 AGENT 007 • STRATEGIC RECOMMENDATION
               </span>
             </div>
 
-            <div className="h-7 px-2.5 inline-flex items-center gap-1.5 rounded-full border border-[#f0eae0]/30 bg-[#f0eae0]/10 font-sans text-xs font-semibold uppercase tracking-wider text-[#f0eae0]">
+            <div className="h-7 px-2.5 inline-flex items-center gap-1.5 rounded-full border border-[#f0eae0]/30 bg-[#f0eae0]/10 font-body text-xs font-bold uppercase tracking-wider text-[#f0eae0]">
               <span>Pro-Forma Levers</span>
             </div>
           </div>
 
           {/* Headline Recommendation */}
-          <h2 className="font-serif text-xl font-bold leading-relaxed text-[#f0eae0] sm:text-2xl">
+          <h2 className="font-display text-xl font-bold uppercase tracking-tight leading-relaxed text-[#f0eae0] sm:text-2xl">
             {strategy.headline_recommendation}
           </h2>
 
           {/* Estimated Impact Pill */}
-          <div className="mt-1 inline-flex items-center gap-2 rounded-full border border-[#f0eae0]/40 bg-[#f0eae0]/10 px-3 py-1 font-sans text-xs font-medium text-[#f0eae0] w-fit tabular-nums">
+          <div className="mt-1 inline-flex items-center gap-2 rounded-full border border-[#f0eae0]/40 bg-[#f0eae0]/10 px-3 py-1 font-body text-xs font-bold text-[#f0eae0] w-fit tabular-nums">
             <TrendingUp className="h-3.5 w-3.5" />
             <span>Impact: {strategy.estimated_impact}</span>
           </div>
@@ -88,14 +88,14 @@ export const StrategySandtable: React.FC<StrategySandtableProps> = ({
 
       {/* 2. Actionable Bullet Points Card — standardized wrapper */}
       <div className="rounded-md border border-noir bg-bg-surface p-6 shadow-none">
-        <h3 className="font-sans text-xs font-bold uppercase tracking-wider text-text-primary mb-3">
+        <h3 className="font-display text-xs font-bold uppercase tracking-wider text-text-primary mb-3">
           Tactical Remediation Roadmap
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {strategy.strategic_actions.map((action, idx) => (
             <div
               key={idx}
-              className="flex items-start gap-2.5 rounded border border-noir bg-bg-surface-subtle p-3 text-xs text-text-muted"
+              className="flex items-start gap-2.5 rounded border border-noir bg-bg-surface-subtle p-3 text-xs text-text-muted font-body"
             >
               <CheckCircle2 className="h-4 w-4 shrink-0 text-text-secondary mt-0.5" />
               <span className="leading-relaxed">{action}</span>
@@ -111,11 +111,11 @@ export const StrategySandtable: React.FC<StrategySandtableProps> = ({
             <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-text-secondary">
               <Sliders className="h-4 w-4" />
             </div>
-            <span className="font-serif text-base font-bold text-text-primary leading-none tracking-tight">
+            <span className="font-display text-base font-bold uppercase tracking-tight text-text-primary leading-none">
               Dynamic Sensitivity Sandtable
             </span>
             <span className="text-text-secondary/40 mx-2 text-xs">|</span>
-            <span className="text-xs uppercase tracking-wider font-sans font-medium text-text-secondary">
+            <span className="text-xs uppercase tracking-wider font-body font-medium italic text-text-secondary">
               Pro-Forma Levers
             </span>
           </div>
@@ -134,9 +134,9 @@ export const StrategySandtable: React.FC<StrategySandtableProps> = ({
 
         {/* Sensitivity Slider Control — clean horizontal alignment */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between gap-4 text-xs font-sans">
+          <div className="flex items-center justify-between gap-4 text-xs font-body">
             <div>
-              <span className="font-semibold text-text-primary">
+              <span className="font-bold text-text-primary">
                 Lever 1: South Region COGS Adjustment
               </span>
               <p className="text-[11px] text-text-muted mt-0.5">
@@ -165,7 +165,7 @@ export const StrategySandtable: React.FC<StrategySandtableProps> = ({
 
           {/* Quick Preset Buttons */}
           <div className="flex items-center gap-2 pt-1">
-            <span className="font-sans text-[10px] uppercase tracking-wider text-text-secondary">
+            <span className="font-body text-[10px] font-bold uppercase tracking-wider text-text-secondary">
               Presets:
             </span>
             {[-18, -12, -6, 0].map((preset) => (

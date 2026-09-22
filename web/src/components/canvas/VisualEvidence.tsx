@@ -58,8 +58,8 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="rounded border border-noir bg-bg-surface p-3 font-sans text-xs shadow-none">
-          <div className="font-serif font-bold text-text-primary mb-1.5">{label}</div>
+        <div className="rounded border border-noir bg-bg-surface p-3 font-body text-xs shadow-none">
+          <div className="font-display font-bold uppercase tracking-tight text-text-primary mb-1.5">{label}</div>
           <div className="flex flex-col gap-1 text-[11px] font-mono tabular-nums">
             {payload.map((entry: any, index: number) => (
               <div key={`item-${index}`} className="flex items-center justify-between gap-4">
@@ -84,11 +84,11 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
           <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded border border-noir bg-bg-surface-subtle text-text-secondary">
             <LineIcon className="h-3.5 w-3.5" />
           </div>
-          <span className="font-serif text-lg font-bold text-text-primary leading-none tracking-tight">
+          <span className="font-display text-lg font-bold uppercase tracking-tight text-text-primary leading-none">
             Tier 2: Visual Evidence &amp; Supporting Ledger
           </span>
           <span className="text-text-secondary/40 mx-2 text-xs">|</span>
-          <span className="text-xs uppercase tracking-wider font-sans font-medium text-text-secondary">
+          <span className="text-xs uppercase tracking-wider font-body font-medium italic text-text-secondary">
             AGENT EVE &amp; AGENT Q • TRAJECTORY &amp; TELEMETRY
           </span>
         </div>
@@ -97,9 +97,9 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
         <div className="flex items-center rounded border border-noir bg-bg-surface-subtle p-0.5">
           <button
             onClick={() => setActiveTab("chart")}
-            className={`h-8 px-3.5 whitespace-nowrap text-xs font-sans uppercase tracking-wider inline-flex items-center gap-2 rounded transition-colors leading-none cursor-pointer ${
+            className={`h-8 px-3.5 whitespace-nowrap text-xs font-body uppercase tracking-wider inline-flex items-center gap-2 rounded transition-colors leading-none cursor-pointer ${
               activeTab === "chart"
-                ? "bg-accent-contrast text-bg-canvas font-semibold"
+                ? "bg-accent-contrast text-bg-canvas font-bold"
                 : "text-text-secondary hover:text-text-primary"
             }`}
           >
@@ -108,9 +108,9 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
           </button>
           <button
             onClick={() => setActiveTab("table")}
-            className={`h-8 px-3.5 whitespace-nowrap text-xs font-sans uppercase tracking-wider inline-flex items-center gap-2 rounded transition-colors leading-none cursor-pointer ${
+            className={`h-8 px-3.5 whitespace-nowrap text-xs font-body uppercase tracking-wider inline-flex items-center gap-2 rounded transition-colors leading-none cursor-pointer ${
               activeTab === "table"
-                ? "bg-accent-contrast text-bg-canvas font-semibold"
+                ? "bg-accent-contrast text-bg-canvas font-bold"
                 : "text-text-secondary hover:text-text-primary"
             }`}
           >
@@ -128,7 +128,7 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
         <div className="space-y-4">
           {/* Chart Controls Bar */}
           <div className="flex items-center justify-between gap-4 flex-wrap pb-1">
-            <div className="font-serif text-base font-bold text-text-primary">
+            <div className="font-display text-base font-bold uppercase tracking-tight text-text-primary">
               {audit.chart_spec.title || "Regional Gross Margin Trajectory (Q1 vs Q2 2026)"}
             </div>
 
@@ -136,9 +136,9 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
             <div className="flex items-center rounded border border-noir bg-transparent p-0.5">
               <button
                 onClick={() => setChartMode("bar")}
-                className={`h-7 px-3 whitespace-nowrap text-xs uppercase tracking-wider font-sans inline-flex items-center gap-1.5 rounded transition-colors leading-none cursor-pointer ${
+                className={`h-7 px-3 whitespace-nowrap text-xs uppercase tracking-wider font-body inline-flex items-center gap-1.5 rounded transition-colors leading-none cursor-pointer ${
                   chartMode === "bar"
-                    ? "bg-accent-contrast text-bg-canvas font-semibold"
+                    ? "bg-accent-contrast text-bg-canvas font-bold"
                     : "text-text-secondary hover:text-text-primary"
                 }`}
               >
@@ -147,9 +147,9 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
               </button>
               <button
                 onClick={() => setChartMode("line")}
-                className={`h-7 px-3 whitespace-nowrap text-xs uppercase tracking-wider font-sans inline-flex items-center gap-1.5 rounded transition-colors leading-none cursor-pointer ${
+                className={`h-7 px-3 whitespace-nowrap text-xs uppercase tracking-wider font-body inline-flex items-center gap-1.5 rounded transition-colors leading-none cursor-pointer ${
                   chartMode === "line"
-                    ? "bg-accent-contrast text-bg-canvas font-semibold"
+                    ? "bg-accent-contrast text-bg-canvas font-bold"
                     : "text-text-secondary hover:text-text-primary"
                 }`}
               >
@@ -273,7 +273,7 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
             <div className="pt-2">
               <button
                 onClick={() => setIsTableExpandedUnderChart(!isTableExpandedUnderChart)}
-                className="w-full flex items-center justify-between p-3 rounded border border-noir bg-bg-surface-subtle hover:bg-bg-surface text-xs font-sans text-text-secondary hover:text-text-primary transition-colors cursor-pointer select-none"
+                className="w-full flex items-center justify-between p-3 rounded border border-noir bg-bg-surface-subtle hover:bg-bg-surface text-xs font-body text-text-secondary hover:text-text-primary transition-colors cursor-pointer select-none"
               >
                 <div className="flex items-center gap-2">
                   {isTableExpandedUnderChart ? (

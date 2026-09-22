@@ -4,6 +4,10 @@
 
 @layer base {
   :root {
+    --font-display: "Helvetica Neue Condensed", "Helvetica Neue", -apple-system, BlinkMacSystemFont, "Impact", sans-serif;
+    --font-body: "Archivo Narrow", sans-serif;
+    --font-sans: var(--font-body);
+
     --bg-canvas: #f4f0e8;                  /* Aged Parchment */
     --bg-surface: #ebe5d8;                 /* Elevated Card Surface */
     --bg-surface-subtle: #f0eae0;          /* Secondary / Callout Tint */
@@ -27,6 +31,10 @@
     --color-swan-charcoal: #4a4540;
     --color-swan-sepia: #6b4d3a;
     --color-swan-rust: #8c432a;
+  }
+
+  .font-display-var {
+    --font-display: "Helvetica Neue Condensed", "Helvetica Neue", -apple-system, BlinkMacSystemFont, "Impact", sans-serif;
   }
 
   .dark {
@@ -77,7 +85,7 @@ body {
   background-color: var(--bg-canvas);
   background-image: radial-gradient(rgba(107, 77, 58, 0.04) 1px, transparent 0);
   background-size: 24px 24px;
-  font-family: var(--font-sans), Inter, system-ui, sans-serif;
+  font-family: var(--font-body), "Archivo Narrow", sans-serif;
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;

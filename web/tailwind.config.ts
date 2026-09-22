@@ -38,8 +38,10 @@ const config: Config = {
         },
       },
       fontFamily: {
-        serif: ["var(--font-display)", "Playfair Display", "Cinzel", "Georgia", "serif"],
-        sans: ["var(--font-sans)", "Inter", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "Helvetica Neue Condensed", "Impact", "sans-serif"],
+        body: ["var(--font-body)", "Archivo Narrow", "sans-serif"],
+        sans: ["var(--font-body)", "Archivo Narrow", "sans-serif"],
+        serif: ["var(--font-display)", "Helvetica Neue Condensed", "Impact", "sans-serif"],
         mono: ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "monospace"],
       },
       borderColor: {

@@ -47,8 +47,8 @@ export const DynamicVisualCard: React.FC<DynamicVisualCardProps> = ({
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="rounded border border-noir bg-bg-surface p-2.5 font-sans text-xs shadow-none">
-          <div className="font-serif font-bold text-text-primary mb-1.5">{label}</div>
+        <div className="rounded border border-noir bg-bg-surface p-2.5 font-body text-xs shadow-none">
+          <div className="font-display font-bold uppercase tracking-tight text-text-primary mb-1.5">{label}</div>
           <div className="flex flex-col gap-1 text-[11px] font-mono tabular-nums">
             {payload.map((entry: any, index: number) => (
               <div key={`item-${index}`} className="flex items-center justify-between gap-4">
@@ -73,11 +73,11 @@ export const DynamicVisualCard: React.FC<DynamicVisualCardProps> = ({
           <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-text-secondary">
             <LineIcon className="h-4 w-4" />
           </div>
-          <span className="font-serif text-base font-bold text-text-primary leading-none tracking-tight">
+          <span className="font-display text-base font-bold uppercase tracking-tight text-text-primary leading-none">
             Stage 3: {audit.chart_spec.title || "Regional Gross Margin Trajectory"}
           </span>
           <span className="text-text-secondary/40 mx-2 text-xs">|</span>
-          <span className="text-xs uppercase tracking-wider font-sans font-medium text-text-secondary">
+          <span className="text-xs uppercase tracking-wider font-body font-medium italic text-text-secondary">
             AGENT EVE • RECHARTS SPECIFICATION
           </span>
         </div>
@@ -87,9 +87,9 @@ export const DynamicVisualCard: React.FC<DynamicVisualCardProps> = ({
           <div className="flex items-center rounded border border-noir bg-transparent p-0.5">
             <button
               onClick={() => setChartMode("bar")}
-              className={`h-8 px-3.5 whitespace-nowrap text-xs uppercase tracking-wider font-sans inline-flex items-center justify-center gap-1.5 rounded transition-colors leading-none cursor-pointer ${
+              className={`h-8 px-3.5 whitespace-nowrap text-xs uppercase tracking-wider font-body inline-flex items-center justify-center gap-1.5 rounded transition-colors leading-none cursor-pointer ${
                 chartMode === "bar"
-                  ? "bg-accent-contrast text-bg-canvas font-semibold"
+                  ? "bg-accent-contrast text-bg-canvas font-bold"
                   : "text-text-secondary hover:text-text-primary"
               }`}
             >
@@ -98,9 +98,9 @@ export const DynamicVisualCard: React.FC<DynamicVisualCardProps> = ({
             </button>
             <button
               onClick={() => setChartMode("line")}
-              className={`h-8 px-3.5 whitespace-nowrap text-xs uppercase tracking-wider font-sans inline-flex items-center justify-center gap-1.5 rounded transition-colors leading-none cursor-pointer ${
+              className={`h-8 px-3.5 whitespace-nowrap text-xs uppercase tracking-wider font-body inline-flex items-center justify-center gap-1.5 rounded transition-colors leading-none cursor-pointer ${
                 chartMode === "line"
-                  ? "bg-accent-contrast text-bg-canvas font-semibold"
+                  ? "bg-accent-contrast text-bg-canvas font-bold"
                   : "text-text-secondary hover:text-text-primary"
               }`}
             >

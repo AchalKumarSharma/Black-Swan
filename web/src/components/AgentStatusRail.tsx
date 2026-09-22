@@ -59,23 +59,23 @@ export const AgentStatusRail: React.FC<AgentStatusRailProps> = ({
       {/* Top Header: Title and Live Countdown Timer */}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-noir pb-2.5">
         <div className="flex items-center gap-2">
-          <span className="font-sans text-xs font-bold uppercase tracking-wider text-text-primary">
+          <span className="font-display text-xs font-bold uppercase tracking-wider text-text-primary">
             Autonomous FP&A Pipeline
           </span>
-          <span className="font-sans text-[10px] uppercase tracking-widest text-text-secondary font-semibold">
+          <span className="font-body text-[10px] uppercase tracking-widest text-text-secondary font-bold">
             • 4-Agent Execution
           </span>
         </div>
 
         {/* Live Elapsed & Countdown Timer */}
-        <div className="flex items-center gap-3 font-sans text-xs font-medium uppercase tracking-wider text-text-secondary">
+        <div className="flex items-center gap-3 font-body text-xs font-medium uppercase tracking-wider text-text-secondary">
           <div className="flex items-center gap-1.5">
             <Clock className="h-3.5 w-3.5 text-text-secondary" />
-            <span className="tabular-nums">Elapsed: {totalElapsedSeconds.toFixed(1)}s</span>
+            <span className="tabular-nums font-mono">Elapsed: {totalElapsedSeconds.toFixed(1)}s</span>
           </div>
           {isRunning && (
-            <div className="flex items-center gap-1 text-accent-rust font-semibold">
-              <span className="tabular-nums">• Est. Remaining: ~{Math.max(0, estimatedRemainingSeconds).toFixed(0)}s</span>
+            <div className="flex items-center gap-1 text-accent-rust font-bold">
+              <span className="tabular-nums font-mono">• Est. Remaining: ~{Math.max(0, estimatedRemainingSeconds).toFixed(0)}s</span>
             </div>
           )}
         </div>
@@ -130,20 +130,20 @@ export const AgentStatusRail: React.FC<AgentStatusRailProps> = ({
                   >
                     <Icon className="h-3.5 w-3.5" />
                   </div>
-                  <span className="font-serif text-sm font-bold text-text-primary">
+                  <span className="font-display text-sm font-bold uppercase tracking-tight text-text-primary">
                     Agent {step.code}
                   </span>
                 </div>
 
                 {/* State-specific Badge */}
                 {step.status === "pending" && (
-                  <span className="font-sans text-[10px] uppercase tracking-widest text-text-muted font-semibold">
+                  <span className="font-body text-[10px] uppercase tracking-widest text-text-muted font-bold">
                     Pending
                   </span>
                 )}
 
                 {step.status === "active" && (
-                  <span className="inline-flex items-center gap-1 font-sans text-[10px] font-semibold uppercase tracking-wider text-accent-rust">
+                  <span className="inline-flex items-center gap-1 font-body text-[10px] font-bold uppercase tracking-wider text-accent-rust">
                     <span className="h-1.5 w-1.5 rounded-full bg-accent-rust animate-ping" />
                     Active
                   </span>
@@ -163,7 +163,7 @@ export const AgentStatusRail: React.FC<AgentStatusRailProps> = ({
                 {step.status === "failed" && (
                   <div className="flex items-center gap-1 text-accent-rust">
                     <AlertCircle className="h-3.5 w-3.5" />
-                    <span className="font-sans text-[10px] uppercase tracking-wider">
+                    <span className="font-body text-[10px] uppercase tracking-wider font-bold">
                       Failed
                     </span>
                   </div>
@@ -172,10 +172,10 @@ export const AgentStatusRail: React.FC<AgentStatusRailProps> = ({
 
               {/* Agent Title & Live Subtext */}
               <div className="relative z-[2]">
-                <div className="font-sans text-xs font-semibold text-text-primary">
+                <div className="font-body text-xs font-bold text-text-primary">
                   {step.name}
                 </div>
-                <div className="mt-1 font-sans text-[11px] leading-snug text-text-secondary">
+                <div className="mt-1 font-body text-[11px] leading-snug text-text-secondary">
                   {step.status === "active" && step.subtext ? (
                     <span className="text-accent-rust font-medium animate-pulse">
                       {step.subtext}

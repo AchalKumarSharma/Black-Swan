@@ -19,28 +19,28 @@ export const RootCauseCallout: React.FC<RootCauseCalloutProps> = ({ diagnostic }
           <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-text-secondary">
             <TrendingDown className="h-4 w-4" />
           </div>
-          <span className="font-serif text-base font-bold text-text-primary leading-none tracking-tight">
+          <span className="font-display text-base font-bold uppercase tracking-tight text-text-primary leading-none">
             Stage 2: Mathematical Root-Cause Isolation
           </span>
           <span className="text-text-secondary/40 mx-2 text-xs">|</span>
-          <span className="text-xs uppercase tracking-wider font-sans font-medium text-text-secondary">
+          <span className="text-xs uppercase tracking-wider font-body font-medium italic text-text-secondary">
             AGENT Q • ROOT-CAUSE DIAGNOSTIC
           </span>
         </div>
       </div>
 
-      {/* Primary Mathematical Finding Callout — lining figures & font-sans wrapped numbers */}
-      <div className="font-serif font-bold text-xl text-text-primary [font-variant-numeric:lining-nums_tabular-nums] [font-feature-settings:'lnum'_1,'tnum'_1] leading-snug">
+      {/* Primary Mathematical Finding Callout — lining figures & font-body wrapped numbers */}
+      <div className="font-body text-xl text-text-primary leading-snug">
         Enterprise Gross Margin compressed{" "}
-        <span className="font-sans font-semibold tabular-nums text-inherit tracking-normal">
+        <span className="font-body font-bold tabular-nums text-inherit tracking-normal text-accent-rust">
           -311 bps YoY (42.97% → 39.86%)
         </span>
         . Isolated to South Region COGS expanding{" "}
-        <span className="font-sans font-semibold tabular-nums text-inherit tracking-normal">
+        <span className="font-body font-bold tabular-nums text-inherit tracking-normal text-accent-rust">
           +6.06%
         </span>{" "}
         despite a{" "}
-        <span className="font-sans font-semibold tabular-nums text-inherit tracking-normal">
+        <span className="font-body font-bold tabular-nums text-inherit tracking-normal text-text-primary">
           -12.50%
         </span>{" "}
         top-line contraction.
@@ -50,8 +50,8 @@ export const RootCauseCallout: React.FC<RootCauseCalloutProps> = ({ diagnostic }
       <div className="mt-4 flex flex-col gap-1.5 border-t border-noir pt-3 text-xs text-text-muted">
         {diagnostic.summary_findings.map((finding, idx) => (
           <div key={idx} className="flex items-start gap-2">
-            <span className="text-text-secondary font-serif font-bold leading-none mt-0.5">•</span>
-            <span className="leading-relaxed tabular-nums">{finding}</span>
+            <span className="text-text-secondary font-body font-bold leading-none mt-0.5">•</span>
+            <span className="leading-relaxed tabular-nums font-body">{finding}</span>
           </div>
         ))}
       </div>
@@ -78,13 +78,13 @@ export const RootCauseCallout: React.FC<RootCauseCalloutProps> = ({ diagnostic }
               />
             </svg>
           </div>
-          <div className="relative z-10 flex items-center gap-1.5 font-sans font-semibold text-accent-rust uppercase text-[10px] tracking-wider mb-2">
+          <div className="relative z-10 flex items-center gap-1.5 font-body font-bold text-accent-rust uppercase text-[10px] tracking-wider mb-2">
             <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
             <span>Diagnostic Anomaly Flag: {anomaly.field || "COGS Anomaly"}</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-start pt-3 border-t border-noir">
             <div>
-              <span className="text-xs text-text-secondary uppercase font-sans font-semibold tracking-wider block mb-1">
+              <span className="text-xs text-text-secondary uppercase font-body font-semibold italic tracking-wider block mb-1">
                 Volume-Expected
               </span>
               <span className="text-base font-semibold text-text-primary tabular-nums font-mono block">
@@ -92,21 +92,21 @@ export const RootCauseCallout: React.FC<RootCauseCalloutProps> = ({ diagnostic }
               </span>
             </div>
             <div>
-              <span className="text-xs text-text-secondary uppercase font-sans font-semibold tracking-wider block mb-1">
+              <span className="text-xs text-text-secondary uppercase font-body font-semibold italic tracking-wider block mb-1">
                 Actual Billed
               </span>
-              <span className="text-base font-semibold text-accent-rust tabular-nums font-mono block">
+              <span className="text-base font-bold text-accent-rust tabular-nums font-mono block">
                 ${Number(anomaly.actual).toLocaleString("en-US")}
               </span>
             </div>
             <div>
-              <span className="text-xs text-text-secondary uppercase font-sans font-semibold tracking-wider block mb-1">
+              <span className="text-xs text-text-secondary uppercase font-body font-semibold italic tracking-wider block mb-1">
                 Discrepancy
               </span>
-              <span className="text-base font-semibold text-accent-rust tabular-nums font-mono block">
+              <span className="text-base font-bold text-accent-rust tabular-nums font-mono block">
                 +{anomaly.delta_pct}%
               </span>
-              <span className="text-xs text-text-secondary mt-0.5 block">
+              <span className="text-xs text-text-secondary font-body italic mt-0.5 block">
                 [{anomaly.cause || "Supplier customs escalation fee & unhedged spot logistics surge"}]
               </span>
             </div>

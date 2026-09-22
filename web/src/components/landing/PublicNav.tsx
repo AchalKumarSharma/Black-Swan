@@ -19,7 +19,7 @@ export const PublicNav: React.FC<PublicNavProps> = ({ onOpenDocs }) => {
         </Link>
 
         {/* Center: Navigation Links (All text aligned along exact optical baseline) */}
-        <div className="flex items-center gap-6 sm:gap-8 font-sans text-xs font-semibold uppercase tracking-widest">
+        <div className="flex items-center gap-6 sm:gap-8 font-body text-xs font-bold uppercase tracking-widest">
           <Link
             href="/"
             onClick={() => {
@@ -41,7 +41,7 @@ export const PublicNav: React.FC<PublicNavProps> = ({ onOpenDocs }) => {
             <button
               type="button"
               onClick={onOpenDocs}
-              className="inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-transparent text-text-secondary hover:text-text-primary hover:border-noir uppercase font-semibold text-xs tracking-widest transition-colors cursor-pointer"
+              className="inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-transparent text-text-secondary hover:text-text-primary hover:border-noir uppercase font-bold text-xs tracking-widest transition-colors cursor-pointer"
             >
               Docs
             </button>
@@ -68,7 +68,7 @@ export const PublicNav: React.FC<PublicNavProps> = ({ onOpenDocs }) => {
           <ThemeToggle />
           <Link
             href="/workspace"
-            className="inline-flex h-8 items-center justify-center rounded bg-accent-contrast px-5 font-sans text-xs font-semibold uppercase tracking-wider text-bg-canvas hover:opacity-90 transition-opacity shadow-none"
+            className="inline-flex h-8 items-center justify-center rounded bg-accent-contrast px-5 font-body text-xs font-bold uppercase tracking-wider text-bg-canvas hover:opacity-90 transition-opacity shadow-none"
           >
             New Report
           </Link>

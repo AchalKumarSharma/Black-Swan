@@ -95,7 +95,7 @@ export default function LandingPage() {
           {/* Left Block: Headline & Tagline */}
           <div className="flex flex-col">
             <div className="inline-flex items-center gap-3">
-              <h1 className="font-serif text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight text-text-primary leading-none">
+              <h1 className="font-display text-5xl sm:text-6xl md:text-7xl font-bold uppercase tracking-tight text-text-primary leading-none">
                 Black Swan
               </h1>
 
@@ -110,7 +110,7 @@ export default function LandingPage() {
             </div>
 
             {/* Small-Caps Tagline */}
-            <div className="mt-2 font-sans text-xs font-semibold uppercase tracking-widest text-text-secondary">
+            <div className="mt-2 font-body text-xs font-bold uppercase tracking-widest text-text-secondary">
               AI FINANCIAL INTELLIGENCE &amp; DECISION SYSTEM
             </div>
           </div>
@@ -119,14 +119,14 @@ export default function LandingPage() {
           <div className="flex items-center gap-6 self-start md:self-end">
             <Link
               href="/workspace"
-              className="inline-flex items-center justify-center rounded bg-accent-contrast px-7 py-2.5 font-sans text-xs font-semibold uppercase tracking-wider text-bg-canvas hover:opacity-90 transition-opacity shadow-none"
+              className="inline-flex items-center justify-center rounded bg-accent-contrast px-7 py-2.5 font-body text-xs font-bold uppercase tracking-wider text-bg-canvas hover:opacity-90 transition-opacity shadow-none"
             >
               Get Started
             </Link>
             <button
               type="button"
               onClick={() => setIsSignInOpen(true)}
-              className="font-sans text-xs font-semibold uppercase tracking-wider text-text-secondary underline underline-offset-4 hover:text-text-primary transition-colors cursor-pointer"
+              className="font-body text-xs font-bold uppercase tracking-wider text-text-secondary underline underline-offset-4 hover:text-text-primary transition-colors cursor-pointer"
             >
               Sign In
             </button>
@@ -164,7 +164,7 @@ export default function LandingPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Ask a question about your financial data..."
-                className="w-full bg-transparent pl-11 pr-4 py-3.5 font-sans text-sm text-text-primary placeholder:text-text-secondary/70 focus:outline-none"
+                className="w-full bg-transparent pl-11 pr-4 py-3.5 font-body text-sm text-text-primary placeholder:text-text-secondary/70 focus:outline-none"
               />
               <div className="hidden sm:flex items-center gap-2 pr-3 pointer-events-none text-[10px] font-mono uppercase tracking-wider text-text-secondary/70">
                 <span>[ENTER] RUN</span>
@@ -186,49 +186,49 @@ export default function LandingPage() {
               <X className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-2 mb-3">
-              <span className="font-serif text-xl font-bold text-text-primary">
+              <span className="font-display text-xl font-bold uppercase tracking-tight text-text-primary">
                 Black Swan Documentation
               </span>
             </div>
-            <p className="font-sans text-xs text-text-muted leading-relaxed mb-4">
+            <p className="font-body text-xs text-text-muted leading-relaxed mb-4">
               Black Swan is an autonomous, transparent AI financial decision assistant powered by a 4-agent FP&A team executing deterministic analytical workflows over local DuckDB engines.
             </p>
-            <div className="space-y-3 mb-6 font-sans text-xs">
+            <div className="space-y-3 mb-6 font-body text-xs">
               <div className="flex items-start gap-2.5 rounded border border-noir bg-bg-surface-subtle p-3">
                 <Terminal className="h-4 w-4 text-text-secondary shrink-0 mt-0.5" />
                 <div>
-                  <strong className="text-text-primary">Agent M (Orchestrator):</strong> Decomposes inquiries into deterministic analysis plans.
+                  <strong className="text-text-primary font-bold">Agent M (Orchestrator):</strong> Decomposes inquiries into deterministic analysis plans.
                 </div>
               </div>
               <div className="flex items-start gap-2.5 rounded border border-noir bg-bg-surface-subtle p-3">
                 <Database className="h-4 w-4 text-text-secondary shrink-0 mt-0.5" />
                 <div>
-                  <strong className="text-text-primary">Agent Q (Data & Diagnostics):</strong> Executes sub-second SQL across in-memory DuckDB ledgers.
+                  <strong className="text-text-primary font-bold">Agent Q (Data & Diagnostics):</strong> Executes sub-second SQL across in-memory DuckDB ledgers.
                 </div>
               </div>
               <div className="flex items-start gap-2.5 rounded border border-noir bg-bg-surface-subtle p-3">
                 <LineChart className="h-4 w-4 text-text-secondary shrink-0 mt-0.5" />
                 <div>
-                  <strong className="text-text-primary">Agent Eve (Audit & Viz):</strong> Compiles Recharts specifications and plain-language formula receipts.
+                  <strong className="text-text-primary font-bold">Agent Eve (Audit & Viz):</strong> Compiles Recharts specifications and plain-language formula receipts.
                 </div>
               </div>
               <div className="flex items-start gap-2.5 rounded border border-noir bg-bg-surface-subtle p-3">
                 <Shield className="h-4 w-4 text-text-secondary shrink-0 mt-0.5" />
                 <div>
-                  <strong className="text-text-primary">Agent 007 (Strategy):</strong> Proposes executive remedial actions with bounded what-if sensitivity levers.
+                  <strong className="text-text-primary font-bold">Agent 007 (Strategy):</strong> Proposes executive remedial actions with bounded what-if sensitivity levers.
                 </div>
               </div>
             </div>
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setIsDocsOpen(false)}
-                className="rounded border border-noir px-4 py-1.5 font-sans text-xs uppercase tracking-wider text-text-secondary hover:text-text-primary hover:border-text-secondary cursor-pointer"
+                className="rounded border border-noir px-4 py-1.5 font-body text-xs font-bold uppercase tracking-wider text-text-secondary hover:text-text-primary hover:border-text-secondary cursor-pointer"
               >
                 Close
               </button>
               <Link
                 href="/workspace"
-                className="rounded bg-accent-contrast px-4 py-1.5 font-sans text-xs font-semibold uppercase tracking-wider text-bg-canvas hover:opacity-90 transition-opacity"
+                className="rounded bg-accent-contrast px-4 py-1.5 font-body text-xs font-bold uppercase tracking-wider text-bg-canvas hover:opacity-90 transition-opacity"
               >
                 Open Workspace
               </Link>
@@ -250,16 +250,16 @@ export default function LandingPage() {
             </button>
             <div className="flex items-center gap-2 mb-1">
               <Lock className="h-4 w-4 text-text-secondary" />
-              <span className="font-serif text-lg font-bold text-text-primary">
+              <span className="font-display text-lg font-bold uppercase tracking-tight text-text-primary">
                 Sign In to Black Swan
               </span>
             </div>
-            <p className="font-sans text-xs text-text-muted mb-4">
+            <p className="font-body text-xs text-text-muted mb-4">
               Enter your corporate credentials to access the FP&A Intelligence Workspace.
             </p>
             <form onSubmit={handleSignInSubmit} className="space-y-3">
               <div>
-                <label className="block font-sans text-[11px] font-semibold uppercase tracking-wider text-text-secondary mb-1">
+                <label className="block font-body text-[11px] font-bold uppercase tracking-wider text-text-secondary mb-1">
                   Email
                 </label>
                 <input
@@ -268,11 +268,11 @@ export default function LandingPage() {
                   placeholder="analyst@firm.com"
                   value={authEmail}
                   onChange={(e) => setAuthEmail(e.target.value)}
-                  className="w-full rounded border border-noir bg-bg-surface-subtle px-3 py-2 font-sans text-xs text-text-primary focus:border-text-secondary focus:outline-none"
+                  className="w-full rounded border border-noir bg-bg-surface-subtle px-3 py-2 font-body text-xs text-text-primary focus:border-text-secondary focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block font-sans text-[11px] font-semibold uppercase tracking-wider text-text-secondary mb-1">
+                <label className="block font-body text-[11px] font-bold uppercase tracking-wider text-text-secondary mb-1">
                   Password
                 </label>
                 <input
@@ -281,12 +281,12 @@ export default function LandingPage() {
                   placeholder="••••••••••••"
                   value={authPassword}
                   onChange={(e) => setAuthPassword(e.target.value)}
-                  className="w-full rounded border border-noir bg-bg-surface-subtle px-3 py-2 font-sans text-xs text-text-primary focus:border-text-secondary focus:outline-none"
+                  className="w-full rounded border border-noir bg-bg-surface-subtle px-3 py-2 font-body text-xs text-text-primary focus:border-text-secondary focus:outline-none"
                 />
               </div>
               <button
                 type="submit"
-                className="w-full rounded bg-accent-contrast py-2.5 font-sans text-xs font-semibold uppercase tracking-wider text-bg-canvas hover:opacity-90 transition-opacity mt-2 cursor-pointer"
+                className="w-full rounded bg-accent-contrast py-2.5 font-body text-xs font-bold uppercase tracking-wider text-bg-canvas hover:opacity-90 transition-opacity mt-2 cursor-pointer"
               >
                 Sign In & Enter Workspace
               </button>

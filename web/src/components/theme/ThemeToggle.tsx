@@ -17,7 +17,7 @@ export const ThemeToggle: React.FC<{ className?: string }> = ({ className = "" }
       <button
         type="button"
         disabled
-        className={`h-7 px-2.5 text-xs font-sans uppercase tracking-wider border border-noir text-text-secondary inline-flex items-center gap-1.5 rounded transition-colors opacity-70 ${className}`}
+        className={`h-7 px-2.5 text-xs font-body font-bold uppercase tracking-wider border border-noir text-text-secondary inline-flex items-center gap-1.5 rounded transition-colors opacity-70 ${className}`}
       >
         <Moon className="h-3 w-3" />
         <span>VAULT [DARK]</span>
@@ -32,7 +32,7 @@ export const ThemeToggle: React.FC<{ className?: string }> = ({ className = "" }
       type="button"
       onClick={toggleTheme}
       title={isDark ? "Switch to Parchment (Light Mode)" : "Switch to Obsidian Vault (Dark Mode)"}
-      className={`h-7 px-2.5 text-xs font-sans uppercase tracking-wider border border-noir text-text-secondary hover:text-text-primary hover:border-text-primary inline-flex items-center gap-1.5 rounded transition-colors cursor-pointer select-none ${className}`}
+      className={`h-7 px-2.5 text-xs font-body font-bold uppercase tracking-wider border border-noir text-text-secondary hover:text-text-primary hover:border-text-primary inline-flex items-center gap-1.5 rounded transition-colors cursor-pointer select-none ${className}`}
     >
       {isDark ? (
         <>

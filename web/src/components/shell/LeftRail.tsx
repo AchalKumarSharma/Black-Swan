@@ -64,7 +64,7 @@ export const LeftRail: React.FC<LeftRailProps> = ({
         {/* + New Report Primary Action */}
         <button
           onClick={onNewReport}
-          className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-accent-contrast px-4 font-sans text-xs font-semibold uppercase tracking-wider text-bg-canvas hover:opacity-90 transition-opacity shadow-none cursor-pointer"
+          className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-accent-contrast px-4 font-body text-xs font-bold uppercase tracking-wider text-bg-canvas hover:opacity-90 transition-opacity shadow-none cursor-pointer"
         >
           <Plus className="h-4 w-4" />
           <span>New Report</span>
@@ -78,7 +78,7 @@ export const LeftRail: React.FC<LeftRailProps> = ({
             placeholder="Search inquiries..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-8.5 w-full rounded-md border border-noir bg-bg-canvas pl-9 pr-3 font-sans text-xs text-text-primary placeholder:text-text-muted focus:border-text-secondary focus:outline-none transition-colors"
+            className="h-8.5 w-full rounded-md border border-noir bg-bg-canvas pl-9 pr-3 font-body text-xs text-text-primary placeholder:text-text-muted focus:border-text-secondary focus:outline-none transition-colors"
           />
         </div>
 
@@ -86,7 +86,7 @@ export const LeftRail: React.FC<LeftRailProps> = ({
         <div className="flex flex-col gap-4">
           {/* Today Group */}
           <div>
-            <div className="mb-2 font-sans text-[10px] font-bold uppercase tracking-widest text-text-secondary">
+            <div className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-text-secondary">
               Today
             </div>
             <div className="flex flex-col gap-1">
@@ -97,9 +97,9 @@ export const LeftRail: React.FC<LeftRailProps> = ({
                     setActiveReport(item.title);
                     if (onSelectReport) onSelectReport(item.title);
                   }}
-                  className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-left font-sans text-xs transition-colors ${
+                  className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-left font-body text-xs transition-colors ${
                     activeReport === item.title
-                      ? "bg-accent-contrast text-bg-canvas font-medium"
+                      ? "bg-accent-contrast text-bg-canvas font-semibold"
                       : "text-text-secondary hover:bg-bg-surface hover:text-text-primary"
                   }`}
                 >
@@ -120,7 +120,7 @@ export const LeftRail: React.FC<LeftRailProps> = ({
 
           {/* Previous 7 Days Group */}
           <div>
-            <div className="mb-2 font-sans text-[10px] font-bold uppercase tracking-widest text-text-secondary">
+            <div className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-text-secondary">
               Previous 7 Days
             </div>
             <div className="flex flex-col gap-1">
@@ -131,9 +131,9 @@ export const LeftRail: React.FC<LeftRailProps> = ({
                     setActiveReport(item.title);
                     if (onSelectReport) onSelectReport(item.title);
                   }}
-                  className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-left font-sans text-xs transition-colors ${
+                  className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-left font-body text-xs transition-colors ${
                     activeReport === item.title
-                      ? "bg-accent-contrast text-bg-canvas font-medium"
+                      ? "bg-accent-contrast text-bg-canvas font-semibold"
                       : "text-text-secondary hover:bg-bg-surface hover:text-text-primary"
                   }`}
                 >
@@ -155,7 +155,7 @@ export const LeftRail: React.FC<LeftRailProps> = ({
           {/* Data Connections Drawer */}
           <div className="border-t border-noir pt-3">
             <div className="mb-2 flex items-center justify-between">
-              <span className="font-sans text-[10px] font-bold uppercase tracking-widest text-text-secondary">
+              <span className="font-display text-[10px] font-bold uppercase tracking-widest text-text-secondary">
                 Data Connections
               </span>
               <Database className="h-3 w-3 text-text-secondary" />
@@ -192,7 +192,7 @@ export const LeftRail: React.FC<LeftRailProps> = ({
       <div className="border-t border-noir pt-4">
         {/* Storage Capacity Bar */}
         <div className="mb-3">
-          <div className="mb-1.5 flex items-center justify-between text-[10px] font-sans uppercase tracking-wider text-text-secondary font-semibold">
+          <div className="mb-1.5 flex items-center justify-between text-[10px] font-body uppercase tracking-wider text-text-secondary font-semibold">
             <span>In-Memory DuckDB</span>
             <span className="font-mono text-text-muted">1.2 / 8 GB</span>
           </div>
@@ -205,7 +205,7 @@ export const LeftRail: React.FC<LeftRailProps> = ({
         </div>
 
         {/* Settings button */}
-        <button className="flex w-full items-center justify-between rounded px-2 py-1.5 text-xs text-text-secondary hover:bg-bg-surface hover:text-text-primary transition-colors">
+        <button className="flex w-full items-center justify-between rounded px-2 py-1.5 font-body text-xs text-text-secondary hover:bg-bg-surface hover:text-text-primary transition-colors">
           <div className="flex items-center gap-2">
             <Settings className="h-3.5 w-3.5 text-text-secondary" />
             <span>Workspace Settings</span>

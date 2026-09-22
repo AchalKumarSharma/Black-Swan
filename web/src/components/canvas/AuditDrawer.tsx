@@ -51,19 +51,19 @@ export const AuditDrawer: React.FC<AuditDrawerProps> = ({
               <ChevronRight className="h-4 w-4 text-text-secondary group-hover:translate-x-0.5 transition-transform" />
             )}
           </div>
-          <span className="font-serif text-base font-bold text-text-primary leading-none tracking-tight">
+          <span className="font-display text-base font-bold uppercase tracking-tight text-text-primary leading-none">
             {isOpen ? "Tier 3: Verification Proof & SQL Receipt" : "▶ View Verification Proof & SQL Receipt"}
           </span>
           <span className="text-text-secondary/40 mx-2 text-xs">|</span>
-          <span className="text-xs uppercase tracking-wider font-sans font-medium text-text-secondary">
+          <span className="text-xs uppercase tracking-wider font-body font-medium italic text-text-secondary">
             AGENT EVE • AUDIT &amp; VERIFICATION LEDGER
           </span>
         </div>
 
         {/* Confidence Score Pill — Single-line whitespace-nowrap */}
-        <div className="h-8 px-3.5 whitespace-nowrap text-xs font-sans uppercase tracking-wider inline-flex items-center gap-2 border border-noir rounded-full bg-transparent text-text-secondary font-semibold leading-none">
+        <div className="h-8 px-3.5 whitespace-nowrap text-xs font-body uppercase tracking-wider inline-flex items-center gap-2 border border-noir rounded-full bg-transparent text-text-secondary font-bold leading-none">
           <ShieldCheck className="h-3.5 w-3.5 flex-shrink-0 text-text-secondary" />
-          <span className="tabular-nums">{confidencePct}% Deterministic Confidence</span>
+          <span className="tabular-nums font-mono">{confidencePct}% Deterministic Confidence</span>
         </div>
       </button>
 
@@ -72,27 +72,27 @@ export const AuditDrawer: React.FC<AuditDrawerProps> = ({
         <div className="border-t border-noir bg-bg-canvas/40 p-6 space-y-6 animate-in fade-in duration-200">
           {/* Plain-Language Narrative Overview */}
           <div>
-            <div className="font-sans text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-1.5 flex items-center gap-1.5">
+            <div className="font-display text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-1.5 flex items-center gap-1.5">
               <Info className="h-3.5 w-3.5 flex-shrink-0 text-text-secondary" />
               <span>Auditor Narrative Assessment</span>
             </div>
-            <p className="font-sans text-xs leading-relaxed text-text-muted border-l-2 border-text-secondary pl-3">
+            <p className="font-body text-xs leading-relaxed text-text-muted border-l-2 border-text-secondary pl-3">
               {audit.plain_language_narrative}
             </p>
           </div>
 
           {/* Formula Ledger Receipts — uniform padding and borders */}
           <div>
-            <div className="font-sans text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-2">
+            <div className="font-display text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-2">
               Formula Ledger &amp; Math Receipts
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {audit.formula_ledger.map((entry, idx) => (
                 <div
                   key={idx}
-                  className="rounded border border-noir bg-bg-surface p-3.5 text-xs"
+                  className="rounded border border-noir bg-bg-surface p-3.5 text-xs font-body"
                 >
-                  <div className="font-serif font-bold text-text-primary mb-1.5 leading-none">
+                  <div className="font-display font-bold uppercase tracking-tight text-text-primary mb-1.5 leading-none">
                     {entry.metric}
                   </div>
                   <div className="font-mono tabular-nums text-[11px] text-text-muted bg-bg-surface-subtle px-2.5 py-1.5 rounded border border-noir mb-2">
@@ -109,13 +109,13 @@ export const AuditDrawer: React.FC<AuditDrawerProps> = ({
 
           {/* Assumptions List */}
           <div>
-            <div className="font-sans text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-2">
+            <div className="font-display text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-2">
               Declared Audit Assumptions &amp; Data Caveats
             </div>
-            <ul className="space-y-1.5 text-xs text-text-muted">
+            <ul className="space-y-1.5 text-xs text-text-muted font-body">
               {audit.assumptions.map((assumption, idx) => (
                 <li key={idx} className="flex items-start gap-2">
-                  <span className="text-text-secondary font-serif font-bold leading-none mt-0.5 tabular-nums">[A{idx + 1}]</span>
+                  <span className="text-text-secondary font-mono font-bold leading-none mt-0.5 tabular-nums">[A{idx + 1}]</span>
                   <span className="leading-relaxed">{assumption}</span>
                 </li>
               ))}
@@ -125,14 +125,14 @@ export const AuditDrawer: React.FC<AuditDrawerProps> = ({
           {/* Executed SQL Code Block with Cold War Cipher Matrix Watermark */}
           <div>
             <div className="mb-2 flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-1.5 font-sans text-[10px] font-bold uppercase tracking-widest text-text-secondary">
+              <div className="flex items-center gap-1.5 font-display text-[10px] font-bold uppercase tracking-widest text-text-secondary">
                 <FileCode className="h-3.5 w-3.5 flex-shrink-0 text-text-secondary" />
                 <span>Deterministic DuckDB SQL Execution</span>
               </div>
               <button
                 type="button"
                 onClick={handleCopySql}
-                className="h-8 px-3.5 whitespace-nowrap text-xs font-sans uppercase tracking-wider inline-flex items-center gap-2 border border-noir rounded bg-transparent hover:bg-bg-surface-subtle transition-colors leading-none text-text-primary cursor-pointer"
+                className="h-8 px-3.5 whitespace-nowrap text-xs font-body font-bold uppercase tracking-wider inline-flex items-center gap-2 border border-noir rounded bg-transparent hover:bg-bg-surface-subtle transition-colors leading-none text-text-primary cursor-pointer"
               >
                 {copiedSql ? (
                   <Check className="h-3.5 w-3.5 text-text-primary" />

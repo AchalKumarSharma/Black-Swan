@@ -35,7 +35,7 @@ export const DataTableCard: React.FC<DataTableCardProps> = ({
           const isSouth = name.toLowerCase().includes("south");
           return (
             <div className="flex items-center gap-2">
-              <span className={`font-sans text-sm ${isSouth ? "font-bold text-accent-rust" : "font-medium text-text-primary"}`}>
+              <span className={`font-body text-sm ${isSouth ? "font-bold text-accent-rust" : "font-medium text-text-primary"}`}>
                 {name}
               </span>
               {isSouth && (
@@ -212,11 +212,11 @@ export const DataTableCard: React.FC<DataTableCardProps> = ({
             <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-text-secondary">
               <Database className="h-4 w-4" />
             </div>
-            <span className="font-serif text-base font-bold text-text-primary leading-none tracking-tight">
+            <span className="font-display text-base font-bold uppercase tracking-tight text-text-primary leading-none">
               Diagnostic Financial Ledger Slice
             </span>
             <span className="text-text-secondary/40 mx-2 text-xs">|</span>
-            <span className="text-xs uppercase tracking-wider font-sans font-medium text-text-secondary">
+            <span className="text-xs uppercase tracking-wider font-body font-medium italic text-text-secondary">
               AGENT Q • IN-MEMORY DUCKDB ({diagnostic.execution_time_ms.toFixed(1)}MS)
             </span>
           </div>
@@ -225,7 +225,7 @@ export const DataTableCard: React.FC<DataTableCardProps> = ({
           <div className="flex items-center gap-2.5 flex-wrap">
             <button
               onClick={handleCopySql}
-              className="h-8 px-3.5 whitespace-nowrap text-xs font-sans uppercase tracking-wider inline-flex items-center gap-2 border border-noir rounded bg-transparent hover:bg-bg-surface-subtle transition-colors leading-none text-text-primary"
+              className="h-8 px-3.5 whitespace-nowrap text-xs font-body font-bold uppercase tracking-wider inline-flex items-center gap-2 border border-noir rounded bg-transparent hover:bg-bg-surface-subtle transition-colors leading-none text-text-primary"
             >
               {copiedSql ? (
                 <Check className="h-3.5 w-3.5 text-text-primary" />
@@ -237,7 +237,7 @@ export const DataTableCard: React.FC<DataTableCardProps> = ({
 
             <button
               onClick={handleDownloadCsv}
-              className="h-8 px-3.5 whitespace-nowrap text-xs font-sans uppercase tracking-wider inline-flex items-center gap-2 border border-noir rounded bg-transparent hover:bg-bg-surface-subtle transition-colors leading-none text-text-primary"
+              className="h-8 px-3.5 whitespace-nowrap text-xs font-body font-bold uppercase tracking-wider inline-flex items-center gap-2 border border-noir rounded bg-transparent hover:bg-bg-surface-subtle transition-colors leading-none text-text-primary"
             >
               <Download className="h-3.5 w-3.5 text-text-secondary" />
               <span>Download CSV Slice</span>
@@ -257,7 +257,7 @@ export const DataTableCard: React.FC<DataTableCardProps> = ({
             mixBlendMode: "var(--dither-blend)" as any,
           }}
         />
-        <table className="relative z-10 w-full border-collapse text-left font-sans text-xs">
+        <table className="relative z-10 w-full border-collapse text-left font-body text-xs">
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
               <tr
@@ -268,7 +268,7 @@ export const DataTableCard: React.FC<DataTableCardProps> = ({
                   <th
                     key={header.id}
                     onClick={header.column.getToggleSortingHandler()}
-                    className="cursor-pointer py-3 px-4 font-sans text-xs uppercase tracking-wider font-semibold text-text-primary border-b border-noir select-none hover:bg-bg-surface transition-colors whitespace-nowrap"
+                    className="cursor-pointer py-3 px-4 font-body text-xs uppercase tracking-wider font-bold text-text-primary border-b border-noir select-none hover:bg-bg-surface transition-colors whitespace-nowrap"
                   >
                     <div className="flex items-center justify-between gap-2 w-full">
                       <span className="truncate">{flexRender(header.column.columnDef.header, header.getContext())}</span>
@@ -292,7 +292,7 @@ export const DataTableCard: React.FC<DataTableCardProps> = ({
                   }`}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-4 py-3 whitespace-nowrap first:text-left first:font-sans">
+                    <td key={cell.id} className="px-4 py-3 whitespace-nowrap first:text-left first:font-body">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}

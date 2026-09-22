@@ -46,44 +46,44 @@ export const ExecutiveVerdict: React.FC<ExecutiveVerdictProps> = ({
           <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded border border-accent-rust/40 bg-accent-rust/10 text-accent-rust">
             <ShieldAlert className="h-3.5 w-3.5" />
           </div>
-          <span className="font-serif text-lg font-bold text-text-primary leading-none tracking-tight">
+          <span className="font-display text-lg font-bold uppercase tracking-tight text-text-primary leading-none">
             Tier 1: Executive Verdict &amp; Strategic Levers
           </span>
           <span className="text-text-secondary/40 mx-2 text-xs">|</span>
-          <span className="text-xs uppercase tracking-wider font-sans font-medium text-text-secondary">
+          <span className="text-xs uppercase tracking-wider font-body font-medium italic text-text-secondary">
             Agent Q &amp; Agent 007 • Root Cause &amp; Remediation
           </span>
         </div>
 
-        <div className="h-8 px-3.5 whitespace-nowrap text-xs font-sans uppercase tracking-wider inline-flex items-center gap-2 border border-noir rounded bg-transparent text-text-secondary font-semibold leading-none">
+        <div className="h-8 px-3.5 whitespace-nowrap text-xs font-body font-bold uppercase tracking-wider inline-flex items-center gap-2 border border-noir rounded bg-transparent text-text-secondary leading-none">
           <span>Priority Action Briefing</span>
         </div>
       </div>
 
       {/* ── 1. The Core Finding (The "What Happened") ── */}
       <div className="space-y-4">
-        {/* Highlighted Core Finding in Bold Serif Display Text */}
-        <div className="font-serif font-bold text-xl sm:text-2xl text-text-primary [font-variant-numeric:lining-nums_tabular-nums] [font-feature-settings:'lnum'_1,'tnum'_1] leading-snug">
+        {/* Highlighted Core Finding in Bold Editorial Text */}
+        <div className="font-body text-xl sm:text-2xl text-text-primary leading-snug">
           Enterprise Gross Margin compressed{" "}
-          <span className="font-sans font-bold tabular-nums text-inherit tracking-normal text-accent-rust">
+          <span className="font-body font-bold tabular-nums text-inherit tracking-normal text-accent-rust">
             -311 bps YoY (42.97% → 39.86%)
           </span>
           . Isolated to South Region COGS expanding{" "}
-          <span className="font-sans font-bold tabular-nums text-inherit tracking-normal text-accent-rust">
+          <span className="font-body font-bold tabular-nums text-inherit tracking-normal text-accent-rust">
             +6.06%
           </span>{" "}
           despite a{" "}
-          <span className="font-sans font-bold tabular-nums text-inherit tracking-normal text-text-primary">
+          <span className="font-body font-bold tabular-nums text-inherit tracking-normal text-text-primary">
             -12.50%
           </span>{" "}
           top-line contraction.
         </div>
 
         {/* Narrative findings */}
-        <div className="flex flex-col gap-1 text-xs text-text-secondary">
+        <div className="flex flex-col gap-1 text-xs text-text-secondary font-body">
           {diagnostic.summary_findings.slice(0, 2).map((finding, idx) => (
             <div key={idx} className="flex items-start gap-2">
-              <span className="text-text-secondary font-serif font-bold leading-none mt-0.5">•</span>
+              <span className="text-text-secondary font-body font-bold leading-none mt-0.5">•</span>
               <span className="leading-relaxed tabular-nums">{finding}</span>
             </div>
           ))}
@@ -110,14 +110,14 @@ export const ExecutiveVerdict: React.FC<ExecutiveVerdictProps> = ({
               </svg>
             </div>
 
-            <div className="relative z-10 flex items-center gap-1.5 font-sans font-semibold text-accent-rust uppercase text-[10px] tracking-wider mb-2">
+            <div className="relative z-10 flex items-center gap-1.5 font-body font-bold text-accent-rust uppercase text-[10px] tracking-wider mb-2">
               <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
               <span>Diagnostic Anomaly Flag: {anomaly.field || "COGS Anomaly"}</span>
             </div>
 
             <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-6 items-start pt-2 border-t border-noir">
               <div>
-                <span className="text-xs text-text-secondary uppercase font-sans font-semibold tracking-wider block mb-1">
+                <span className="text-xs text-text-secondary uppercase font-body font-semibold italic tracking-wider block mb-1">
                   Volume-Expected
                 </span>
                 <span className="text-base font-semibold text-text-primary tabular-nums font-mono block">
@@ -125,7 +125,7 @@ export const ExecutiveVerdict: React.FC<ExecutiveVerdictProps> = ({
                 </span>
               </div>
               <div>
-                <span className="text-xs text-text-secondary uppercase font-sans font-semibold tracking-wider block mb-1">
+                <span className="text-xs text-text-secondary uppercase font-body font-semibold italic tracking-wider block mb-1">
                   Actual Billed
                 </span>
                 <span className="text-base font-semibold text-accent-rust tabular-nums font-mono block">
@@ -133,13 +133,13 @@ export const ExecutiveVerdict: React.FC<ExecutiveVerdictProps> = ({
                 </span>
               </div>
               <div>
-                <span className="text-xs text-text-secondary uppercase font-sans font-semibold tracking-wider block mb-1">
+                <span className="text-xs text-text-secondary uppercase font-body font-semibold italic tracking-wider block mb-1">
                   Discrepancy
                 </span>
-                <span className="text-base font-semibold text-accent-rust tabular-nums font-mono block">
+                <span className="text-base font-bold text-accent-rust tabular-nums font-mono block">
                   +{anomaly.delta_pct}%
                 </span>
-                <span className="text-xs text-text-muted mt-0.5 block">
+                <span className="text-xs text-text-muted mt-0.5 block font-body">
                   [{anomaly.cause || "Supplier customs escalation fee & unhedged spot logistics surge"}]
                 </span>
               </div>
@@ -152,7 +152,7 @@ export const ExecutiveVerdict: React.FC<ExecutiveVerdictProps> = ({
       {strategy ? (
         <div className="mt-7 pt-6 border-t border-noir space-y-5">
           {/* Action Header */}
-          <div className="flex items-center gap-2 font-sans text-xs uppercase tracking-widest font-semibold text-text-secondary">
+          <div className="flex items-center gap-2 font-display text-xs uppercase tracking-widest font-bold text-text-secondary">
             <TrendingUp className="h-4 w-4 text-text-secondary" />
             <span>Remedial Directive &amp; Sensitivity Sandtable</span>
           </div>
@@ -182,13 +182,13 @@ export const ExecutiveVerdict: React.FC<ExecutiveVerdictProps> = ({
             </div>
 
             <div className="relative z-[2] flex flex-col gap-2.5">
-              <div className="font-sans text-[10px] font-bold uppercase tracking-widest text-[#f0eae0]/60">
+              <div className="font-body text-[10px] font-bold uppercase tracking-widest italic text-[#f0eae0]/60">
                 Agent 007 Strategic Directive
               </div>
-              <h3 className="font-serif text-lg sm:text-xl font-bold leading-snug text-[#f0eae0]">
+              <h3 className="font-display uppercase tracking-tight text-lg sm:text-xl font-bold leading-snug text-[#f0eae0]">
                 {strategy.headline_recommendation}
               </h3>
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#f0eae0]/40 bg-[#f0eae0]/10 px-3 py-1 font-sans text-xs font-medium text-[#f0eae0] w-fit tabular-nums">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#f0eae0]/40 bg-[#f0eae0]/10 px-3 py-1 font-body text-xs font-bold text-[#f0eae0] w-fit tabular-nums">
                 <TrendingUp className="h-3.5 w-3.5" />
                 <span>Impact: {strategy.estimated_impact}</span>
               </div>
@@ -200,7 +200,7 @@ export const ExecutiveVerdict: React.FC<ExecutiveVerdictProps> = ({
             {strategy.strategic_actions.map((action, idx) => (
               <div
                 key={idx}
-                className="flex items-start gap-2.5 rounded border border-noir bg-bg-surface-subtle p-3 text-xs text-text-secondary"
+                className="flex items-start gap-2.5 rounded border border-noir bg-bg-surface-subtle p-3 text-xs text-text-secondary font-body"
               >
                 <CheckCircle2 className="h-4 w-4 shrink-0 text-text-secondary mt-0.5" />
                 <span className="leading-relaxed">{action}</span>
@@ -213,11 +213,11 @@ export const ExecutiveVerdict: React.FC<ExecutiveVerdictProps> = ({
             <div className="mb-4 flex flex-wrap items-center justify-between gap-4 border-b border-noir pb-3">
               <div className="flex items-center gap-2.5">
                 <Sliders className="h-4 w-4 text-text-secondary" />
-                <span className="font-serif text-sm font-bold text-text-primary">
+                <span className="font-display text-sm font-bold uppercase tracking-tight text-text-primary">
                   What-If Sensitivity Simulation
                 </span>
                 <span className="text-text-secondary/40 mx-1 text-xs">|</span>
-                <span className="text-xs uppercase tracking-wider font-sans font-medium text-text-secondary">
+                <span className="text-xs uppercase tracking-wider font-body font-medium italic text-text-secondary">
                   South Region COGS Lever
                 </span>
               </div>
@@ -236,8 +236,8 @@ export const ExecutiveVerdict: React.FC<ExecutiveVerdictProps> = ({
 
             {/* Slider control */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between gap-4 text-xs font-sans">
-                <span className="font-semibold text-text-primary">
+              <div className="flex items-center justify-between gap-4 text-xs font-body">
+                <span className="font-bold text-text-primary">
                   Renegotiated Freight &amp; Demurrage Floor:
                 </span>
                 <div className="font-mono tabular-nums text-sm font-bold text-text-primary bg-bg-surface h-8 px-3 flex items-center rounded border border-noir">
@@ -262,7 +262,7 @@ export const ExecutiveVerdict: React.FC<ExecutiveVerdictProps> = ({
 
               {/* Preset buttons */}
               <div className="flex items-center gap-2 pt-1">
-                <span className="font-sans text-[10px] uppercase tracking-wider text-text-secondary">
+                <span className="font-body text-[10px] font-bold uppercase tracking-wider text-text-secondary">
                   Simulation Presets:
                 </span>
                 {[-18, -12, -6, 0].map((preset) => (
@@ -283,7 +283,7 @@ export const ExecutiveVerdict: React.FC<ExecutiveVerdictProps> = ({
           </div>
         </div>
       ) : (
-        <div className="mt-6 pt-5 border-t border-noir flex items-center gap-2.5 text-xs font-sans text-text-secondary">
+        <div className="mt-6 pt-5 border-t border-noir flex items-center gap-2.5 text-xs font-body italic text-text-secondary">
           <Loader2 className="h-3.5 w-3.5 animate-spin text-text-secondary" />
           <span>Agent 007 formulating actionable strategic remediation &amp; sensitivity levers...</span>
         </div>
