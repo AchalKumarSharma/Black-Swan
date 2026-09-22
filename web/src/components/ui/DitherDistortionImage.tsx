@@ -266,11 +266,6 @@ export const DitherDistortionImage: React.FC<DitherDistortionImageProps> = ({
 
         {/* Tactical MI6 Optical Reticle Overlays */}
         <div className="pointer-events-none absolute inset-0 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          {/* Top-Right Telemetry Tag */}
-          <div className="absolute top-3 right-3 font-mono text-[9px] uppercase tracking-[0.2em] text-parchment/75 bg-swan-black/70 px-2 py-0.5 rounded border border-swan-sepia/50 backdrop-blur-xs">
-            OP-RETICLE // ACTIVE
-          </div>
-
           {/* Corner Optical L-Brackets */}
           <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-swan-sepia/70" />
           <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-swan-sepia/70" />
