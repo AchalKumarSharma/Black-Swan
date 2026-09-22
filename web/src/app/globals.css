@@ -2,16 +2,51 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #f4f0e8;
-  --foreground: #1a1613;
-  --color-parchment: #f4f0e8;
-  --color-parchment-light: #faf7f2;
-  --color-parchment-dark: #eae4d6;
-  --color-swan-black: #1a1613;
-  --color-swan-charcoal: #4a4540;
-  --color-swan-sepia: #6b4d3a;
-  --color-swan-rust: #8c432a;
+@layer base {
+  :root {
+    --bg-canvas: #f4f0e8;                  /* Aged Parchment */
+    --bg-surface: #ebe5d8;                 /* Elevated Card Surface */
+    --bg-surface-subtle: #f0eae0;          /* Secondary / Callout Tint */
+    --border-noir: rgba(107, 77, 58, 0.3); /* Sepia Wireframe */
+    --text-primary: #1a1613;               /* Near-Black Editorial Ink */
+    --text-secondary: #6b4d3a;             /* Muted Sepia Attributions */
+    --text-muted: #8c827a;                 /* Faint Metadata */
+    --accent-rust: #8c432a;                /* High-Priority Anomaly */
+    --accent-contrast: #1a1613;            /* Solid Black Highlights */
+    --chart-bar-primary: #1a1613;
+    --chart-bar-secondary: #4a4540;
+    --chart-grid: rgba(107, 77, 58, 0.15);
+    --dither-blend: multiply;
+
+    --background: var(--bg-canvas);
+    --foreground: var(--text-primary);
+    --color-parchment: #f4f0e8;
+    --color-parchment-light: #faf7f2;
+    --color-parchment-dark: #eae4d6;
+    --color-swan-black: #1a1613;
+    --color-swan-charcoal: #4a4540;
+    --color-swan-sepia: #6b4d3a;
+    --color-swan-rust: #8c432a;
+  }
+
+  .dark {
+    --bg-canvas: #12100e;                  /* Deep Charcoal Espresso */
+    --bg-surface: #1a1714;                 /* Warm Smoked Oak Card */
+    --bg-surface-subtle: #24201c;          /* Elevated Callout / Anomaly Row */
+    --border-noir: rgba(184, 155, 130, 0.22); /* Faint Antique Bronze Wireframe */
+    --text-primary: #f0eae0;               /* Warm Bone White */
+    --text-secondary: #b89b82;             /* Muted Antique Bronze */
+    --text-muted: #7d7168;                 /* Faint Carbon */
+    --accent-rust: #d97746;                /* Amber Flame Anomaly Warning */
+    --accent-contrast: #f0eae0;            /* Inverted Contrast Pill */
+    --chart-bar-primary: #f0eae0;          /* Bright Bone Bar */
+    --chart-bar-secondary: #8c6b51;        /* Smoked Bronze Bar */
+    --chart-grid: rgba(184, 155, 130, 0.12);
+    --dither-blend: screen;                /* Inverts dark ink into illuminated phosphor */
+
+    --background: var(--bg-canvas);
+    --foreground: var(--text-primary);
+  }
 }
 
 html {
@@ -31,20 +66,28 @@ button, input, textarea {
 }
 
 body {
-  color: var(--foreground);
-  background-color: var(--background);
+  color: var(--text-primary);
+  background-color: var(--bg-canvas);
   background-image: radial-gradient(rgba(107, 77, 58, 0.04) 1px, transparent 0);
   background-size: 24px 24px;
   font-family: var(--font-sans), Inter, system-ui, sans-serif;
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.dark body {
+  background-image: radial-gradient(rgba(184, 155, 130, 0.06) 1px, transparent 0);
 }
 
 /* Scrollbars for Firefox */
 * {
   scrollbar-width: thin;
   scrollbar-color: #6b4d3a #eae4d6;
+}
+.dark * {
+  scrollbar-color: #7d7168 #1a1714;
 }
 
 /* Custom Scrollbars for Webkit/Blink */
@@ -61,6 +104,16 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #4a4540;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #1a1714;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #7d7168;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #b89b82;
 }
 
 /* Custom Slider Styling for 007 Sandtable */
@@ -87,7 +140,7 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 50%;
   border: 2px solid #f4f0e8;
   box-shadow: 0 0 0 1px #1a1613;
-  transition: transform 0.1s ease;
+  transition: transform 0.1s ease, background-color 0.2s ease;
 }
 
 input[type="range"]::-webkit-slider-thumb:hover {
@@ -109,6 +162,24 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: 0 0 0 1px #1a1613;
 }
 
+/* Dark mode range slider */
+.dark input[type="range"]::-webkit-slider-runnable-track {
+  background-color: var(--border-noir);
+}
+.dark input[type="range"]::-webkit-slider-thumb {
+  background-color: var(--accent-rust);
+  border-color: var(--bg-surface);
+  box-shadow: 0 0 0 1px var(--accent-rust);
+}
+.dark input[type="range"]::-moz-range-track {
+  background-color: var(--border-noir);
+}
+.dark input[type="range"]::-moz-range-thumb {
+  background-color: var(--accent-rust);
+  border-color: var(--bg-surface);
+  box-shadow: 0 0 0 1px var(--accent-rust);
+}
+
 /* ─────────────────────────────────────────────────────────────
    NOIR DITHER & HALFTONE TEXTURE UTILITIES
    ───────────────────────────────────────────────────────────── */
@@ -128,10 +199,18 @@ input[type="range"]::-moz-range-thumb {
   z-index: 1;
   pointer-events: none;
   opacity: 0.07;
-  mix-blend-mode: multiply;
+  mix-blend-mode: var(--dither-blend, multiply);
   background-image:
     repeating-conic-gradient(#4a4540 0% 25%, transparent 0% 50%) 0 0 / 4px 4px,
     repeating-conic-gradient(#6b4d3a 0% 25%, transparent 0% 50%) 2px 2px / 4px 4px;
+}
+
+.dark .bg-dither::before {
+  opacity: 0.12;
+  mix-blend-mode: var(--dither-blend, screen);
+  background-image:
+    repeating-conic-gradient(#b89b82 0% 25%, transparent 0% 50%) 0 0 / 4px 4px,
+    repeating-conic-gradient(#f0eae0 0% 25%, transparent 0% 50%) 2px 2px / 4px 4px;
 }
 
 /* Dark variant for inverted cards (e.g. 007 anchor) */

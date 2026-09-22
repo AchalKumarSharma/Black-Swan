@@ -298,7 +298,7 @@ function WorkspaceView() {
   const estimatedRemaining = Math.max(0, 6.0 - elapsedSeconds);
 
   return (
-    <div className="flex h-screen flex-col bg-parchment text-swan-black overflow-hidden">
+    <div className="flex h-screen flex-col bg-bg-canvas text-text-primary overflow-hidden transition-colors duration-200">
       {/* 1. Top Header */}
       <TopHeader isSystemLive={true} />
 
@@ -317,18 +317,18 @@ function WorkspaceView() {
         <main className="flex-1 h-full overflow-y-auto px-6 py-8 lg:px-12">
           <div className="mx-auto max-w-5xl space-y-8">
             {/* Hero Query Input Area */}
-            <section className="rounded-xl border border-swan-sepia/50 bg-parchment-light p-6 shadow-none">
+            <section className="rounded-xl border border-noir bg-bg-surface p-6 shadow-none transition-colors duration-200">
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Search className="h-4 w-4 text-swan-sepia" />
+                  <Search className="h-4 w-4 text-text-secondary" />
                   <label
                     htmlFor="query-input"
-                    className="font-sans text-xs font-bold uppercase tracking-wider text-swan-black"
+                    className="font-sans text-xs font-bold uppercase tracking-wider text-text-primary"
                   >
                     Financial Intelligence Inquiry
                   </label>
                 </div>
-                <span className="font-sans text-[11px] uppercase tracking-wider text-swan-sepia font-medium">
+                <span className="font-sans text-[11px] uppercase tracking-wider text-text-secondary font-medium">
                   Dataset: SaaS_Q2_Financials.csv
                 </span>
               </div>
@@ -348,7 +348,7 @@ function WorkspaceView() {
                   }}
                   rows={2}
                   placeholder="Ask a deterministic question about your financials (e.g. margin variance, cost overruns, budget drifts)..."
-                  className="w-full resize-none rounded-lg border border-swan-sepia/60 bg-parchment p-3.5 font-sans text-sm text-swan-black placeholder:text-swan-sepia/60 focus:border-swan-sepia focus:outline-none transition-colors"
+                  className="w-full resize-none rounded-lg border border-noir bg-bg-canvas p-3.5 font-sans text-sm text-text-primary placeholder:text-text-muted focus:border-text-secondary focus:outline-none transition-colors"
                 />
               </div>
 
@@ -356,7 +356,7 @@ function WorkspaceView() {
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                 {/* 3 Clickable Suggestion Chips (Outlined Sepia Pills matching Landing Page) */}
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-sans text-[10px] font-bold uppercase tracking-widest text-swan-sepia mr-1">
+                  <span className="font-sans text-[10px] font-bold uppercase tracking-widest text-text-secondary mr-1">
                     Suggestions:
                   </span>
                   {promptSuggestions.map((promptText) => (
@@ -367,7 +367,7 @@ function WorkspaceView() {
                         setQuery(promptText);
                         handleStartAnalysis(promptText);
                       }}
-                      className="rounded-full border border-swan-sepia/80 px-3.5 py-1 font-sans text-[10px] font-semibold uppercase tracking-widest text-swan-sepia bg-transparent hover:border-swan-black hover:text-swan-black transition-colors"
+                      className="rounded-full border border-noir px-3.5 py-1 font-sans text-[10px] font-semibold uppercase tracking-widest text-text-secondary bg-transparent hover:border-text-primary hover:text-text-primary transition-colors cursor-pointer"
                     >
                       {promptText}
                     </button>
@@ -380,7 +380,7 @@ function WorkspaceView() {
                     <button
                       type="button"
                       onClick={handleCancelAnalysis}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-swan-rust bg-parchment px-3 py-2 font-sans text-xs font-semibold uppercase tracking-wider text-swan-rust hover:bg-swan-rust/10 transition-colors"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-accent-rust bg-bg-canvas px-3 py-2 font-sans text-xs font-semibold uppercase tracking-wider text-accent-rust hover:bg-accent-rust/10 transition-colors cursor-pointer"
                     >
                       <XCircle className="h-3.5 w-3.5" />
                       <span>Cancel Analysis</span>
@@ -393,8 +393,8 @@ function WorkspaceView() {
                     onClick={() => handleStartAnalysis()}
                     className={`inline-flex items-center gap-2 rounded-md px-5 py-2 font-sans text-xs font-semibold uppercase tracking-wider transition-colors shadow-none ${
                       isRunning || !query.trim()
-                        ? "bg-swan-charcoal/40 text-parchment/60 cursor-not-allowed"
-                        : "bg-swan-black text-parchment hover:bg-swan-charcoal"
+                        ? "bg-bg-surface-subtle text-text-muted cursor-not-allowed border border-noir"
+                        : "bg-accent-contrast text-bg-canvas hover:opacity-90 cursor-pointer"
                     }`}
                   >
                     {isRunning ? (
@@ -453,7 +453,7 @@ function WorkspaceView() {
             {/* Idle State: Editorial Dossier Briefing Banner wrapped in DitherDistortionImage */}
             {!isRunning && mPlan === null && (
               <DitherDistortionImage
-                containerClassName="rounded-xl border border-[#6b4d3a]/40 bg-parchment-dark shadow-none corner-ticks"
+                containerClassName="rounded-xl border border-noir bg-bg-surface shadow-none corner-ticks"
                 maxTilt={4}
                 maxDistortion={9}
               >
@@ -465,14 +465,17 @@ function WorkspaceView() {
                   <div
                     className="absolute inset-0 opacity-[0.05] pointer-events-none"
                     style={{
-                      backgroundImage: `radial-gradient(circle, #1a1613 1px, transparent 1px)`,
+                      backgroundImage: `radial-gradient(circle, var(--text-primary) 1px, transparent 1px)`,
                       backgroundSize: '6px 6px',
                     }}
                   />
 
                   {/* Cold War Radar & Reticle Graphic Overlay */}
-                  <div className="pointer-events-none select-none absolute inset-0 flex items-center justify-center opacity-[0.08] mix-blend-multiply">
-                    <svg viewBox="0 0 500 240" className="w-full h-full text-swan-sepia stroke-current fill-none">
+                  <div
+                    className="pointer-events-none select-none absolute inset-0 flex items-center justify-center opacity-[0.08]"
+                    style={{ mixBlendMode: "var(--dither-blend)" as any }}
+                  >
+                    <svg viewBox="0 0 500 240" className="w-full h-full stroke-current fill-none" style={{ color: "var(--text-secondary)" }}>
                       <circle cx="250" cy="120" r="90" strokeWidth="0.75" />
                       <circle cx="250" cy="120" r="60" strokeWidth="0.5" strokeDasharray="4 4" />
                       <circle cx="250" cy="120" r="30" strokeWidth="0.5" />
@@ -482,8 +485,8 @@ function WorkspaceView() {
                     </svg>
                   </div>
 
-                  {/* Warm parchment gradient for text legibility */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#f4f0e8] via-[#f4f0e8]/85 to-transparent" />
+                  {/* Warm gradient for text legibility */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-bg-surface via-bg-surface/85 to-transparent" />
 
                   {/* Decorative vignette edges */}
                   <div
@@ -497,33 +500,33 @@ function WorkspaceView() {
                   <div className="relative z-10 flex flex-col items-center justify-end h-full px-8 py-10 text-center" style={{ minHeight: '290px' }}>
                     {/* Classification tag */}
                     <div className="mb-4 inline-flex items-center gap-2">
-                      <span className="font-sans text-[10px] font-bold uppercase tracking-[0.2em] text-swan-sepia">
+                      <span className="font-sans text-[10px] font-bold uppercase tracking-[0.2em] text-text-secondary">
                         Mission Active
                       </span>
-                      <span className="text-swan-sepia/40 text-[10px]">//</span>
-                      <span className="font-sans text-[10px] font-bold uppercase tracking-[0.2em] text-swan-sepia">
+                      <span className="text-text-secondary/40 text-[10px]">//</span>
+                      <span className="font-sans text-[10px] font-bold uppercase tracking-[0.2em] text-text-secondary">
                         Dataset Loaded
                       </span>
                     </div>
 
                     {/* Serif headline */}
-                    <h3 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-swan-black mb-3">
+                    <h3 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-text-primary mb-3">
                       Awaiting Investigation Parameters
                     </h3>
 
                     {/* Narrative subtext */}
-                    <p className="mx-auto max-w-lg font-sans text-xs leading-relaxed text-swan-charcoal">
+                    <p className="mx-auto max-w-lg font-sans text-xs leading-relaxed text-text-secondary">
                       Select a suggestion chip above or dispatch M, Q, Eve, and 007
                       to analyze ledger variance with deterministic receipts.
                     </p>
 
                     {/* Decorative dossier line */}
                     <div className="mt-6 flex items-center gap-3">
-                      <div className="h-px w-12 bg-swan-sepia/30" />
-                      <span className="font-mono text-[9px] uppercase tracking-[0.25em] text-swan-sepia/50">
+                      <div className="h-px w-12 bg-text-secondary/30" />
+                      <span className="font-mono text-[9px] uppercase tracking-[0.25em] text-text-muted">
                         Black Swan FP&A Division // MI6 Special Section
                       </span>
-                      <div className="h-px w-12 bg-swan-sepia/30" />
+                      <div className="h-px w-12 bg-text-secondary/30" />
                     </div>
                   </div>
                 </div>
@@ -538,7 +541,7 @@ function WorkspaceView() {
 
 export default function WorkspacePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-parchment" />}>
+    <Suspense fallback={<div className="min-h-screen bg-bg-canvas" />}>
       <WorkspaceView />
     </Suspense>
   );

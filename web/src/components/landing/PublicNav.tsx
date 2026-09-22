@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 interface PublicNavProps {
   onOpenDocs?: () => void;
@@ -9,7 +10,7 @@ interface PublicNavProps {
 
 export const PublicNav: React.FC<PublicNavProps> = ({ onOpenDocs }) => {
   return (
-    <nav className="w-full border-b border-swan-sepia/30 bg-parchment px-6 py-3.5 sm:px-10">
+    <nav className="w-full border-b border-noir bg-bg-canvas/95 px-6 py-3.5 sm:px-10 backdrop-blur-sm transition-colors duration-200">
       <div className="mx-auto flex max-w-6xl items-center justify-between">
         {/* Left: Exact Swan Logo Mark */}
         <Link href="/" className="flex items-center gap-2 group">
@@ -21,7 +22,7 @@ export const PublicNav: React.FC<PublicNavProps> = ({ onOpenDocs }) => {
         </Link>
 
         {/* Center: Navigation Links (All text aligned along exact optical baseline) */}
-        <div className="flex items-center gap-8 font-sans text-xs font-semibold uppercase tracking-widest">
+        <div className="flex items-center gap-6 sm:gap-8 font-sans text-xs font-semibold uppercase tracking-widest">
           <Link
             href="/"
             onClick={() => {
@@ -29,13 +30,13 @@ export const PublicNav: React.FC<PublicNavProps> = ({ onOpenDocs }) => {
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }
             }}
-            className="inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-swan-black text-swan-black transition-colors"
+            className="inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-text-primary text-text-primary transition-colors"
           >
             Home
           </Link>
           <Link
             href="/workspace?view=reports"
-            className="inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-transparent text-swan-charcoal hover:text-swan-black hover:border-swan-sepia/40 transition-colors"
+            className="inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-transparent text-text-secondary hover:text-text-primary hover:border-noir transition-colors"
           >
             Reports
           </Link>
@@ -43,14 +44,14 @@ export const PublicNav: React.FC<PublicNavProps> = ({ onOpenDocs }) => {
             <button
               type="button"
               onClick={onOpenDocs}
-              className="inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-transparent text-swan-charcoal hover:text-swan-black hover:border-swan-sepia/40 uppercase font-semibold text-xs tracking-widest transition-colors cursor-pointer"
+              className="inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-transparent text-text-secondary hover:text-text-primary hover:border-noir uppercase font-semibold text-xs tracking-widest transition-colors cursor-pointer"
             >
               Docs
             </button>
           ) : (
             <Link
               href="/docs"
-              className="inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-transparent text-swan-charcoal hover:text-swan-black hover:border-swan-sepia/40 transition-colors"
+              className="inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-transparent text-text-secondary hover:text-text-primary hover:border-noir transition-colors"
             >
               Docs
             </Link>
@@ -59,17 +60,18 @@ export const PublicNav: React.FC<PublicNavProps> = ({ onOpenDocs }) => {
             href="https://github.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-transparent text-swan-charcoal hover:text-swan-black hover:border-swan-sepia/40 transition-colors"
+            className="hidden sm:inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-transparent text-text-secondary hover:text-text-primary hover:border-noir transition-colors"
           >
             Community
           </a>
         </div>
 
-        {/* Right: NEW REPORT Primary Button */}
-        <div className="flex items-center">
+        {/* Right: Theme Toggle & NEW REPORT Primary Button */}
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
           <Link
             href="/workspace"
-            className="inline-flex h-8 items-center justify-center rounded bg-swan-black px-5 font-sans text-xs font-semibold uppercase tracking-wider text-parchment hover:bg-swan-charcoal transition-colors shadow-none"
+            className="inline-flex h-8 items-center justify-center rounded bg-accent-contrast px-5 font-sans text-xs font-semibold uppercase tracking-wider text-bg-canvas hover:opacity-90 transition-opacity shadow-none"
           >
             New Report
           </Link>

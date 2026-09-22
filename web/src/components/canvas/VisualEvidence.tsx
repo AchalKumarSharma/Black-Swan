@@ -51,20 +51,20 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
   ];
 
   const seriesColorMap = {
-    primary: "#1a1613",    // Solid Black
-    comparison: "#4a4540", // Charcoal Grey
+    primary: "var(--chart-bar-primary)",
+    comparison: "var(--chart-bar-secondary)",
   };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="rounded border border-[#6b4d3a]/40 bg-parchment-light p-3 font-sans text-xs shadow-none">
-          <div className="font-serif font-bold text-swan-black mb-1.5">{label}</div>
+        <div className="rounded border border-noir bg-bg-surface p-3 font-sans text-xs shadow-none">
+          <div className="font-serif font-bold text-text-primary mb-1.5">{label}</div>
           <div className="flex flex-col gap-1 text-[11px] font-mono tabular-nums">
             {payload.map((entry: any, index: number) => (
               <div key={`item-${index}`} className="flex items-center justify-between gap-4">
-                <span className="text-swan-charcoal">{entry.name}:</span>
-                <span className="font-bold text-swan-black tabular-nums">
+                <span className="text-text-secondary">{entry.name}:</span>
+                <span className="font-bold text-text-primary tabular-nums">
                   {Number(entry.value).toFixed(2)}%
                 </span>
               </div>
@@ -77,30 +77,30 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
   };
 
   return (
-    <section className="rounded-lg border border-[#6b4d3a]/30 bg-[#f4f0e8] p-6 sm:p-7 shadow-none transition-all relative overflow-hidden">
+    <section className="rounded-lg border border-noir bg-bg-surface p-6 sm:p-7 shadow-none transition-all relative overflow-hidden">
       {/* ── Tier 2 Header with Segmented Tab Switcher ── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[#6b4d3a]/20 mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-noir mb-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded border border-[#6b4d3a]/40 bg-[#6b4d3a]/10 text-[#6b4d3a]">
+          <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded border border-noir bg-bg-surface-subtle text-text-secondary">
             <LineIcon className="h-3.5 w-3.5" />
           </div>
-          <span className="font-serif text-lg font-bold text-[#1a1613] leading-none tracking-tight">
+          <span className="font-serif text-lg font-bold text-text-primary leading-none tracking-tight">
             Tier 2: Visual Evidence &amp; Supporting Ledger
           </span>
-          <span className="text-[#6b4d3a]/30 mx-2 text-xs">|</span>
-          <span className="text-xs uppercase tracking-wider font-sans font-medium text-[#6b4d3a]">
+          <span className="text-text-secondary/40 mx-2 text-xs">|</span>
+          <span className="text-xs uppercase tracking-wider font-sans font-medium text-text-secondary">
             AGENT EVE &amp; AGENT Q • TRAJECTORY &amp; TELEMETRY
           </span>
         </div>
 
         {/* Tab Switcher — Single-line executive control */}
-        <div className="flex items-center rounded border border-[#6b4d3a]/30 bg-parchment-dark/50 p-0.5">
+        <div className="flex items-center rounded border border-noir bg-bg-surface-subtle p-0.5">
           <button
             onClick={() => setActiveTab("chart")}
             className={`h-8 px-3.5 whitespace-nowrap text-xs font-sans uppercase tracking-wider inline-flex items-center gap-2 rounded transition-colors leading-none cursor-pointer ${
               activeTab === "chart"
-                ? "bg-swan-black text-parchment font-semibold"
-                : "text-[#6b4d3a] hover:text-[#1a1613]"
+                ? "bg-accent-contrast text-bg-canvas font-semibold"
+                : "text-text-secondary hover:text-text-primary"
             }`}
           >
             <BarChart2 className="h-3.5 w-3.5" />
@@ -110,8 +110,8 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
             onClick={() => setActiveTab("table")}
             className={`h-8 px-3.5 whitespace-nowrap text-xs font-sans uppercase tracking-wider inline-flex items-center gap-2 rounded transition-colors leading-none cursor-pointer ${
               activeTab === "table"
-                ? "bg-swan-black text-parchment font-semibold"
-                : "text-[#6b4d3a] hover:text-[#1a1613]"
+                ? "bg-accent-contrast text-bg-canvas font-semibold"
+                : "text-text-secondary hover:text-text-primary"
             }`}
           >
             <TableIcon className="h-3.5 w-3.5" />
@@ -128,18 +128,18 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
         <div className="space-y-4">
           {/* Chart Controls Bar */}
           <div className="flex items-center justify-between gap-4 flex-wrap pb-1">
-            <div className="font-serif text-base font-bold text-[#1a1613]">
+            <div className="font-serif text-base font-bold text-text-primary">
               {audit.chart_spec.title || "Regional Gross Margin Trajectory (Q1 vs Q2 2026)"}
             </div>
 
             {/* Bar vs Line Toggle */}
-            <div className="flex items-center rounded border border-[#6b4d3a]/40 bg-transparent p-0.5">
+            <div className="flex items-center rounded border border-noir bg-transparent p-0.5">
               <button
                 onClick={() => setChartMode("bar")}
                 className={`h-7 px-3 whitespace-nowrap text-xs uppercase tracking-wider font-sans inline-flex items-center gap-1.5 rounded transition-colors leading-none cursor-pointer ${
                   chartMode === "bar"
-                    ? "bg-swan-black text-parchment font-semibold"
-                    : "text-swan-charcoal hover:text-swan-black"
+                    ? "bg-accent-contrast text-bg-canvas font-semibold"
+                    : "text-text-secondary hover:text-text-primary"
                 }`}
               >
                 <BarChart2 className="h-3 w-3" />
@@ -149,8 +149,8 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
                 onClick={() => setChartMode("line")}
                 className={`h-7 px-3 whitespace-nowrap text-xs uppercase tracking-wider font-sans inline-flex items-center gap-1.5 rounded transition-colors leading-none cursor-pointer ${
                   chartMode === "line"
-                    ? "bg-swan-black text-parchment font-semibold"
-                    : "text-swan-charcoal hover:text-swan-black"
+                    ? "bg-accent-contrast text-bg-canvas font-semibold"
+                    : "text-text-secondary hover:text-text-primary"
                 }`}
               >
                 <TrendingUp className="h-3 w-3" />
@@ -160,10 +160,13 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
           </div>
 
           {/* Elevated Recharts Container with Nautical Radar Watermark */}
-          <div className="relative h-[320px] w-full rounded border border-[#6b4d3a]/30 bg-parchment-light/40 p-3 overflow-hidden">
+          <div className="relative h-[320px] w-full rounded border border-noir bg-bg-canvas/50 p-3 overflow-hidden">
             {/* Cold War Nautical Radar / Trajectory Vector Watermark */}
-            <div className="pointer-events-none select-none absolute inset-0 flex items-center justify-center opacity-[0.06] mix-blend-multiply z-0">
-              <svg viewBox="0 0 600 320" className="w-full h-full text-swan-sepia stroke-current fill-none">
+            <div
+              className="pointer-events-none select-none absolute inset-0 flex items-center justify-center opacity-[0.08] z-0"
+              style={{ mixBlendMode: "var(--dither-blend)" as any }}
+            >
+              <svg viewBox="0 0 600 320" className="w-full h-full text-text-secondary stroke-current fill-none">
                 <circle cx="300" cy="160" r="140" strokeWidth="0.75" />
                 <circle cx="300" cy="160" r="95" strokeWidth="0.5" strokeDasharray="4 4" />
                 <circle cx="300" cy="160" r="50" strokeWidth="0.5" />
@@ -172,7 +175,7 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
                 <line x1="178" y1="38" x2="422" y2="282" strokeWidth="0.5" strokeDasharray="3 3" />
                 <line x1="178" y1="282" x2="422" y2="38" strokeWidth="0.5" strokeDasharray="3 3" />
                 <line x1="300" y1="160" x2="480" y2="70" strokeWidth="1" />
-                <polygon points="480,70 468,72 474,80" fill="#6b4d3a" />
+                <polygon points="480,70 468,72 474,80" fill="currentColor" />
               </svg>
             </div>
 
@@ -180,19 +183,19 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
               <ResponsiveContainer width="100%" height="100%">
                 {chartMode === "bar" ? (
                   <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#6b4d3a" strokeOpacity={0.15} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
                     <XAxis
                       dataKey="region"
-                      stroke="#4a4540"
-                      tick={{ fill: "#4a4540", fontSize: 11, fontFamily: "var(--font-sans), sans-serif" }}
-                      tickLine={{ stroke: "#6b4d3a", strokeOpacity: 0.3 }}
+                      stroke="var(--text-secondary)"
+                      tick={{ fill: "var(--text-secondary)", fontSize: 11, fontFamily: "var(--font-sans), sans-serif" }}
+                      tickLine={{ stroke: "var(--chart-grid)" }}
                     />
                     <YAxis
                       unit="%"
                       domain={[20, 50]}
-                      stroke="#4a4540"
-                      tick={{ fill: "#4a4540", fontSize: 11, fontFamily: "ui-monospace, monospace" }}
-                      tickLine={{ stroke: "#6b4d3a", strokeOpacity: 0.3 }}
+                      stroke="var(--text-secondary)"
+                      tick={{ fill: "var(--text-secondary)", fontSize: 11, fontFamily: "ui-monospace, monospace" }}
+                      tickLine={{ stroke: "var(--chart-grid)" }}
                     />
                     <Tooltip content={<CustomTooltip />} />
                     <Legend
@@ -207,31 +210,31 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
                     <Bar
                       dataKey="q1_gm_pct"
                       name="Q1 Gross Margin %"
-                      fill={seriesColorMap.comparison}
+                      fill="var(--chart-bar-secondary)"
                       radius={[2, 2, 0, 0]}
                     />
                     <Bar
                       dataKey="q2_gm_pct"
                       name="Q2 Gross Margin %"
-                      fill={seriesColorMap.primary}
+                      fill="var(--chart-bar-primary)"
                       radius={[2, 2, 0, 0]}
                     />
                   </BarChart>
                 ) : (
                   <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#6b4d3a" strokeOpacity={0.15} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
                     <XAxis
                       dataKey="region"
-                      stroke="#4a4540"
-                      tick={{ fill: "#4a4540", fontSize: 11, fontFamily: "var(--font-sans), sans-serif" }}
-                      tickLine={{ stroke: "#6b4d3a", strokeOpacity: 0.3 }}
+                      stroke="var(--text-secondary)"
+                      tick={{ fill: "var(--text-secondary)", fontSize: 11, fontFamily: "var(--font-sans), sans-serif" }}
+                      tickLine={{ stroke: "var(--chart-grid)" }}
                     />
                     <YAxis
                       unit="%"
                       domain={[20, 50]}
-                      stroke="#4a4540"
-                      tick={{ fill: "#4a4540", fontSize: 11, fontFamily: "ui-monospace, monospace" }}
-                      tickLine={{ stroke: "#6b4d3a", strokeOpacity: 0.3 }}
+                      stroke="var(--text-secondary)"
+                      tick={{ fill: "var(--text-secondary)", fontSize: 11, fontFamily: "ui-monospace, monospace" }}
+                      tickLine={{ stroke: "var(--chart-grid)" }}
                     />
                     <Tooltip content={<CustomTooltip />} />
                     <Legend
@@ -247,17 +250,17 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
                       type="monotone"
                       dataKey="q1_gm_pct"
                       name="Q1 Gross Margin %"
-                      stroke={seriesColorMap.comparison}
+                      stroke="var(--chart-bar-secondary)"
                       strokeWidth={2}
-                      dot={{ r: 4, fill: seriesColorMap.comparison }}
+                      dot={{ r: 4, fill: "var(--chart-bar-secondary)" }}
                     />
                     <Line
                       type="monotone"
                       dataKey="q2_gm_pct"
                       name="Q2 Gross Margin %"
-                      stroke={seriesColorMap.primary}
+                      stroke="var(--chart-bar-primary)"
                       strokeWidth={2.5}
-                      dot={{ r: 5, fill: seriesColorMap.primary }}
+                      dot={{ r: 5, fill: "var(--chart-bar-primary)" }}
                     />
                   </LineChart>
                 )}
@@ -270,7 +273,7 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
             <div className="pt-2">
               <button
                 onClick={() => setIsTableExpandedUnderChart(!isTableExpandedUnderChart)}
-                className="w-full flex items-center justify-between p-3 rounded border border-[#6b4d3a]/25 bg-parchment-light/60 hover:bg-parchment-light text-xs font-sans text-[#6b4d3a] hover:text-[#1a1613] transition-colors cursor-pointer select-none"
+                className="w-full flex items-center justify-between p-3 rounded border border-noir bg-bg-surface-subtle hover:bg-bg-surface text-xs font-sans text-text-secondary hover:text-text-primary transition-colors cursor-pointer select-none"
               >
                 <div className="flex items-center gap-2">
                   {isTableExpandedUnderChart ? (
@@ -284,7 +287,7 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
                       : "▶ Show Supporting Financial Ledger Slice (DuckDB Ledger • 10 Columns)"}
                   </span>
                 </div>
-                <span className="font-mono text-[10px] text-[#6b4d3a]/75">
+                <span className="font-mono text-[10px] text-text-secondary/75">
                   Agent Q • {diagnostic.execution_time_ms.toFixed(1)}ms
                 </span>
               </button>

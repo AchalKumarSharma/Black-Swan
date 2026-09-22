@@ -35,11 +35,11 @@ export const DataTableCard: React.FC<DataTableCardProps> = ({
           const isSouth = name.toLowerCase().includes("south");
           return (
             <div className="flex items-center gap-2">
-              <span className={`font-sans text-sm ${isSouth ? "font-bold text-[#8c432a]" : "font-medium text-[#1a1613]"}`}>
+              <span className={`font-sans text-sm ${isSouth ? "font-bold text-accent-rust" : "font-medium text-text-primary"}`}>
                 {name}
               </span>
               {isSouth && (
-                <span className="inline-flex items-center gap-1 rounded bg-[#8c432a]/15 px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider text-[#8c432a]">
+                <span className="inline-flex items-center gap-1 rounded bg-accent-rust/15 px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider text-accent-rust">
                   <AlertCircle className="h-2.5 w-2.5" />
                   Primary Anomaly
                 </span>
@@ -54,7 +54,7 @@ export const DataTableCard: React.FC<DataTableCardProps> = ({
         cell: (info) => {
           const val = Number(info.getValue());
           return (
-            <span className="font-mono text-sm tabular-nums text-swan-charcoal text-right block">
+            <span className="font-mono text-sm tabular-nums text-text-secondary text-right block">
               ${val.toLocaleString("en-US")}
             </span>
           );
@@ -66,7 +66,7 @@ export const DataTableCard: React.FC<DataTableCardProps> = ({
         cell: (info) => {
           const val = Number(info.getValue());
           return (
-            <span className="font-mono text-sm tabular-nums text-swan-black font-semibold text-right block">
+            <span className="font-mono text-sm tabular-nums text-text-primary font-semibold text-right block">
               ${val.toLocaleString("en-US")}
             </span>
           );
@@ -81,7 +81,7 @@ export const DataTableCard: React.FC<DataTableCardProps> = ({
           return (
             <span
               className={`font-mono text-sm tabular-nums text-right block ${
-                isNegative ? "text-swan-rust font-semibold" : "text-swan-charcoal"
+                isNegative ? "text-accent-rust font-semibold" : "text-text-secondary"
               }`}
             >
               {val > 0 ? `+${val.toFixed(2)}%` : `${val.toFixed(2)}%`}
@@ -95,7 +95,7 @@ export const DataTableCard: React.FC<DataTableCardProps> = ({
         cell: (info) => {
           const val = Number(info.getValue());
           return (
-            <span className="font-mono text-sm tabular-nums text-swan-charcoal text-right block">
+            <span className="font-mono text-sm tabular-nums text-text-secondary text-right block">
               ${val.toLocaleString("en-US")}
             </span>
           );
@@ -107,7 +107,7 @@ export const DataTableCard: React.FC<DataTableCardProps> = ({
         cell: (info) => {
           const val = Number(info.getValue());
           return (
-            <span className="font-mono text-sm tabular-nums text-swan-black font-semibold text-right block">
+            <span className="font-mono text-sm tabular-nums text-text-primary font-semibold text-right block">
               ${val.toLocaleString("en-US")}
             </span>
           );
@@ -122,7 +122,7 @@ export const DataTableCard: React.FC<DataTableCardProps> = ({
           return (
             <span
               className={`font-mono text-sm tabular-nums text-right block ${
-                isHighExpansion ? "text-swan-rust font-bold" : "text-swan-charcoal"
+                isHighExpansion ? "text-accent-rust font-bold" : "text-text-secondary"
               }`}
             >
               {val > 0 ? `+${val.toFixed(2)}%` : `${val.toFixed(2)}%`}
@@ -134,7 +134,7 @@ export const DataTableCard: React.FC<DataTableCardProps> = ({
         accessorKey: "q1_gm_pct",
         header: "Q1 GM %",
         cell: (info) => (
-          <span className="font-mono text-sm tabular-nums text-swan-charcoal text-right block">
+          <span className="font-mono text-sm tabular-nums text-text-secondary text-right block">
             {Number(info.getValue()).toFixed(2)}%
           </span>
         ),
@@ -145,7 +145,7 @@ export const DataTableCard: React.FC<DataTableCardProps> = ({
         cell: (info) => {
           const val = Number(info.getValue());
           return (
-            <span className="font-mono text-sm tabular-nums text-swan-black font-semibold text-right block">
+            <span className="font-mono text-sm tabular-nums text-text-primary font-semibold text-right block">
               {val.toFixed(2)}%
             </span>
           );
@@ -160,7 +160,7 @@ export const DataTableCard: React.FC<DataTableCardProps> = ({
           return (
             <span
               className={`font-mono text-sm tabular-nums font-bold text-right block ${
-                isSeverelyNegative ? "text-swan-rust" : "text-swan-charcoal"
+                isSeverelyNegative ? "text-accent-rust" : "text-text-secondary"
               }`}
             >
               {val > 0 ? `+${val.toLocaleString()} bps` : `${val.toLocaleString()} bps`}
@@ -204,19 +204,19 @@ export const DataTableCard: React.FC<DataTableCardProps> = ({
   };
 
   return (
-    <section className="rounded-md border border-[#6b4d3a]/30 bg-[#f4f0e8] p-6 shadow-none transition-all">
+    <section className="rounded-md border border-noir bg-bg-surface p-6 shadow-none transition-all">
       {/* Optional Card Header */}
       {!hideHeader && (
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[#6b4d3a]/20 mb-5">
+        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-noir mb-5">
           <div className="flex items-center gap-3">
-            <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-[#4a4540]">
+            <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-text-secondary">
               <Database className="h-4 w-4" />
             </div>
-            <span className="font-serif text-base font-bold text-[#1a1613] leading-none tracking-tight">
+            <span className="font-serif text-base font-bold text-text-primary leading-none tracking-tight">
               Diagnostic Financial Ledger Slice
             </span>
-            <span className="text-[#6b4d3a]/30 mx-2 text-xs">|</span>
-            <span className="text-xs uppercase tracking-wider font-sans font-medium text-[#6b4d3a]">
+            <span className="text-text-secondary/40 mx-2 text-xs">|</span>
+            <span className="text-xs uppercase tracking-wider font-sans font-medium text-text-secondary">
               AGENT Q • IN-MEMORY DUCKDB ({diagnostic.execution_time_ms.toFixed(1)}MS)
             </span>
           </div>
@@ -225,21 +225,21 @@ export const DataTableCard: React.FC<DataTableCardProps> = ({
           <div className="flex items-center gap-2.5 flex-wrap">
             <button
               onClick={handleCopySql}
-              className="h-8 px-3.5 whitespace-nowrap text-xs font-sans uppercase tracking-wider inline-flex items-center gap-2 border border-[#6b4d3a]/30 rounded bg-transparent hover:bg-[#1a1613]/5 transition-colors leading-none text-[#1a1613]"
+              className="h-8 px-3.5 whitespace-nowrap text-xs font-sans uppercase tracking-wider inline-flex items-center gap-2 border border-noir rounded bg-transparent hover:bg-bg-surface-subtle transition-colors leading-none text-text-primary"
             >
               {copiedSql ? (
-                <Check className="h-3.5 w-3.5 text-[#1a1613]" />
+                <Check className="h-3.5 w-3.5 text-text-primary" />
               ) : (
-                <Copy className="h-3.5 w-3.5 text-[#6b4d3a]" />
+                <Copy className="h-3.5 w-3.5 text-text-secondary" />
               )}
               <span>{copiedSql ? "Copied" : "Copy Raw SQL"}</span>
             </button>
 
             <button
               onClick={handleDownloadCsv}
-              className="h-8 px-3.5 whitespace-nowrap text-xs font-sans uppercase tracking-wider inline-flex items-center gap-2 border border-[#6b4d3a]/30 rounded bg-transparent hover:bg-[#1a1613]/5 transition-colors leading-none text-[#1a1613]"
+              className="h-8 px-3.5 whitespace-nowrap text-xs font-sans uppercase tracking-wider inline-flex items-center gap-2 border border-noir rounded bg-transparent hover:bg-bg-surface-subtle transition-colors leading-none text-text-primary"
             >
-              <Download className="h-3.5 w-3.5 text-[#6b4d3a]" />
+              <Download className="h-3.5 w-3.5 text-text-secondary" />
               <span>Download CSV Slice</span>
             </button>
           </div>
@@ -247,13 +247,14 @@ export const DataTableCard: React.FC<DataTableCardProps> = ({
       )}
 
       {/* TanStack Interactive Table with Punch-Card Telemetry Grid Watermark */}
-      <div className="relative overflow-x-auto rounded border border-[#6b4d3a]/30 bg-parchment-light/40">
+      <div className="relative overflow-x-auto rounded border border-noir bg-bg-canvas/50">
         {/* Cold War Cryptographic Punch-Card / Ledger Grid Watermark */}
         <div
-          className="pointer-events-none select-none absolute inset-0 opacity-[0.05] mix-blend-multiply z-0"
+          className="pointer-events-none select-none absolute inset-0 opacity-[0.06] z-0"
           style={{
-            backgroundImage: `radial-gradient(circle, #4a4540 1.5px, transparent 1.5px), repeating-linear-gradient(to right, rgba(107,77,58,0.12) 0px, rgba(107,77,58,0.12) 1px, transparent 1px, transparent 48px)`,
+            backgroundImage: `radial-gradient(circle, var(--text-secondary) 1.5px, transparent 1.5px), repeating-linear-gradient(to right, var(--border-noir) 0px, var(--border-noir) 1px, transparent 1px, transparent 48px)`,
             backgroundSize: `12px 12px, 48px 100%`,
+            mixBlendMode: "var(--dither-blend)" as any,
           }}
         />
         <table className="relative z-10 w-full border-collapse text-left font-sans text-xs">
@@ -261,17 +262,17 @@ export const DataTableCard: React.FC<DataTableCardProps> = ({
             {table.getHeaderGroups().map((headerGroup) => (
               <tr
                 key={headerGroup.id}
-                className="border-b border-[#6b4d3a]/30 bg-parchment-dark/60"
+                className="border-b border-noir bg-bg-surface-subtle"
               >
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
                     onClick={header.column.getToggleSortingHandler()}
-                    className="cursor-pointer py-3 px-4 font-sans text-xs uppercase tracking-wider font-semibold text-[#1a1613] border-b border-[#6b4d3a]/30 select-none hover:bg-parchment-dark transition-colors whitespace-nowrap"
+                    className="cursor-pointer py-3 px-4 font-sans text-xs uppercase tracking-wider font-semibold text-text-primary border-b border-noir select-none hover:bg-bg-surface transition-colors whitespace-nowrap"
                   >
                     <div className="flex items-center justify-between gap-2 w-full">
                       <span className="truncate">{flexRender(header.column.columnDef.header, header.getContext())}</span>
-                      <ArrowUpDown className="h-3 w-3 flex-shrink-0 text-[#6b4d3a]" />
+                      <ArrowUpDown className="h-3 w-3 flex-shrink-0 text-text-secondary" />
                     </div>
                   </th>
                 ))}
@@ -284,10 +285,10 @@ export const DataTableCard: React.FC<DataTableCardProps> = ({
               return (
                 <tr
                   key={row.id}
-                  className={`border-b border-[#6b4d3a]/20 transition-colors ${
+                  className={`border-b border-noir/40 transition-colors ${
                     isAnomaly
-                      ? "bg-[#8c432a]/10 hover:bg-[#8c432a]/15 border-l-4 border-l-[#8c432a]"
-                      : "hover:bg-parchment-dark/30"
+                      ? "bg-accent-rust/15 hover:bg-accent-rust/20 border-l-4 border-l-accent-rust"
+                      : "hover:bg-bg-surface-subtle/50"
                   }`}
                 >
                   {row.getVisibleCells().map((cell) => (

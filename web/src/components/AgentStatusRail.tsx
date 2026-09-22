@@ -55,27 +55,27 @@ export const AgentStatusRail: React.FC<AgentStatusRailProps> = ({
   };
 
   return (
-    <div className="w-full rounded-lg border border-swan-sepia/50 bg-parchment-light p-4">
+    <div className="w-full rounded-lg border border-noir bg-bg-surface p-4 transition-colors duration-200">
       {/* Top Header: Title and Live Countdown Timer */}
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-swan-sepia/30 pb-2.5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-noir pb-2.5">
         <div className="flex items-center gap-2">
-          <span className="font-sans text-xs font-bold uppercase tracking-wider text-swan-black">
+          <span className="font-sans text-xs font-bold uppercase tracking-wider text-text-primary">
             Autonomous FP&A Pipeline
           </span>
-          <span className="font-sans text-[10px] uppercase tracking-widest text-swan-sepia font-semibold">
+          <span className="font-sans text-[10px] uppercase tracking-widest text-text-secondary font-semibold">
             • 4-Agent Execution
           </span>
         </div>
 
         {/* Live Elapsed & Countdown Timer */}
-        <div className="flex items-center gap-3 font-sans text-xs font-medium uppercase tracking-wider text-swan-charcoal">
+        <div className="flex items-center gap-3 font-sans text-xs font-medium uppercase tracking-wider text-text-secondary">
           <div className="flex items-center gap-1.5">
-            <Clock className="h-3.5 w-3.5 text-swan-sepia" />
-            <span>Elapsed: {totalElapsedSeconds.toFixed(1)}s</span>
+            <Clock className="h-3.5 w-3.5 text-text-secondary" />
+            <span className="tabular-nums">Elapsed: {totalElapsedSeconds.toFixed(1)}s</span>
           </div>
           {isRunning && (
-            <div className="flex items-center gap-1 text-swan-sepia font-semibold">
-              <span>• Est. Remaining: ~{Math.max(0, estimatedRemainingSeconds).toFixed(0)}s</span>
+            <div className="flex items-center gap-1 text-accent-rust font-semibold">
+              <span className="tabular-nums">• Est. Remaining: ~{Math.max(0, estimatedRemainingSeconds).toFixed(0)}s</span>
             </div>
           )}
         </div>
@@ -95,12 +95,12 @@ export const AgentStatusRail: React.FC<AgentStatusRailProps> = ({
                 isActive ? "bg-scanline active" : ""
               } ${
                 step.status === "pending"
-                  ? "border border-dashed border-swan-sepia/50 bg-parchment/50 text-swan-charcoal/70"
+                  ? "border border-dashed border-noir bg-bg-canvas/50 text-text-muted"
                   : step.status === "active"
-                  ? "border-2 border-swan-sepia bg-parchment shadow-sm animate-sepia-glow"
+                  ? "border-2 border-text-secondary bg-bg-surface-subtle shadow-sm animate-sepia-glow"
                   : step.status === "completed"
-                  ? "border border-swan-sepia/60 bg-parchment text-swan-black"
-                  : "border border-swan-rust bg-parchment text-swan-rust"
+                  ? "border border-noir bg-bg-surface-subtle text-text-primary"
+                  : "border border-accent-rust bg-bg-surface text-accent-rust"
               }`}
             >
               {/* Background insignia watermark */}
@@ -110,6 +110,7 @@ export const AgentStatusRail: React.FC<AgentStatusRailProps> = ({
                   backgroundImage: insignia,
                   backgroundSize: "85%",
                   backgroundPosition: "center center",
+                  mixBlendMode: "var(--dither-blend)" as any,
                 }}
               />
 
@@ -119,48 +120,48 @@ export const AgentStatusRail: React.FC<AgentStatusRailProps> = ({
                   <div
                     className={`flex h-6 w-6 items-center justify-center rounded border ${
                       step.status === "pending"
-                        ? "border-swan-sepia/40 bg-parchment text-swan-sepia/70"
+                        ? "border-noir bg-bg-surface text-text-muted"
                         : step.status === "active"
-                        ? "border-swan-sepia bg-swan-sepia text-parchment animate-pulse"
+                        ? "border-text-secondary bg-text-secondary text-bg-canvas animate-pulse"
                         : step.status === "completed"
-                        ? "border-swan-sepia/60 bg-parchment-light text-swan-black"
-                        : "border-swan-rust bg-swan-rust text-parchment"
+                        ? "border-noir bg-bg-surface text-text-primary"
+                        : "border-accent-rust bg-accent-rust text-bg-canvas"
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
                   </div>
-                  <span className="font-serif text-sm font-bold text-swan-black">
+                  <span className="font-serif text-sm font-bold text-text-primary">
                     Agent {step.code}
                   </span>
                 </div>
 
                 {/* State-specific Badge */}
                 {step.status === "pending" && (
-                  <span className="font-sans text-[10px] uppercase tracking-widest text-swan-sepia font-semibold">
+                  <span className="font-sans text-[10px] uppercase tracking-widest text-text-muted font-semibold">
                     Pending
                   </span>
                 )}
 
                 {step.status === "active" && (
-                  <span className="inline-flex items-center gap-1 font-sans text-[10px] font-semibold uppercase tracking-wider text-swan-sepia">
-                    <span className="h-1.5 w-1.5 rounded-full bg-swan-sepia animate-ping" />
+                  <span className="inline-flex items-center gap-1 font-sans text-[10px] font-semibold uppercase tracking-wider text-accent-rust">
+                    <span className="h-1.5 w-1.5 rounded-full bg-accent-rust animate-ping" />
                     Active
                   </span>
                 )}
 
                 {step.status === "completed" && (
                   <div className="flex items-center gap-1.5">
-                    <span className="rounded border border-swan-sepia/60 bg-parchment-light px-1.5 py-0.5 font-mono text-[10px] text-swan-charcoal">
+                    <span className="rounded border border-noir bg-bg-surface px-1.5 py-0.5 font-mono text-[10px] text-text-muted">
                       {step.timing || "Done"}
                     </span>
-                    <div className="flex h-4 w-4 items-center justify-center rounded-full bg-swan-black text-parchment">
+                    <div className="flex h-4 w-4 items-center justify-center rounded-full bg-accent-contrast text-bg-canvas">
                       <Check className="h-2.5 w-2.5 stroke-[3]" />
                     </div>
                   </div>
                 )}
 
                 {step.status === "failed" && (
-                  <div className="flex items-center gap-1 text-swan-rust">
+                  <div className="flex items-center gap-1 text-accent-rust">
                     <AlertCircle className="h-3.5 w-3.5" />
                     <span className="font-sans text-[10px] uppercase tracking-wider">
                       Failed
@@ -171,12 +172,12 @@ export const AgentStatusRail: React.FC<AgentStatusRailProps> = ({
 
               {/* Agent Title & Live Subtext */}
               <div className="relative z-[2]">
-                <div className="font-sans text-xs font-semibold text-swan-black">
+                <div className="font-sans text-xs font-semibold text-text-primary">
                   {step.name}
                 </div>
-                <div className="mt-1 font-sans text-[11px] leading-snug text-swan-charcoal">
+                <div className="mt-1 font-sans text-[11px] leading-snug text-text-secondary">
                   {step.status === "active" && step.subtext ? (
-                    <span className="text-swan-sepia font-medium animate-pulse">
+                    <span className="text-accent-rust font-medium animate-pulse">
                       {step.subtext}
                     </span>
                   ) : (
