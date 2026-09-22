@@ -11,6 +11,7 @@ import { BlackSwanLogo } from "@/components/ui/BlackSwanLogo";
 
 export default function LandingPage() {
   const router = useRouter();
+  const [selectedTier, setSelectedTier] = useState<"FREE" | "TEAM" | "ENTERPRISE" | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDocsOpen, setIsDocsOpen] = useState(false);
   const [isSignInOpen, setIsSignInOpen] = useState(false);
@@ -59,20 +60,34 @@ export default function LandingPage() {
           </svg>
         </div>
 
-        {/* 2. Row of 3 Outlined Pill Tags with classified watermark stamp */}
-        <div className="relative flex items-center gap-2.5 mb-3 z-10">
-          {/* Subtle Top-Secret Stamp Watermark */}
-          <div className="pointer-events-none select-none absolute -left-2 -top-1.5 opacity-[0.25] -rotate-3 border border-dashed border-accent-rust px-2 py-0.5 rounded font-mono text-[9px] font-bold tracking-[0.25em] text-accent-rust">
+        {/* 2. Top-Secret Stamp Watermark & Interactive Tier Selector */}
+        <div className="relative flex flex-col items-start gap-2 mb-3.5 z-10">
+          {/* Subtle Top-Secret Stamp Watermark positioned cleanly above pills without overlap */}
+          <div className="pointer-events-none select-none inline-flex items-center opacity-45 -rotate-1 border border-dashed border-accent-rust/70 px-2 py-0.5 rounded font-mono text-[9px] font-bold tracking-[0.25em] text-accent-rust">
             CLASSIFIED // SECTION 007
           </div>
-          {["FREE", "TEAM", "ENTERPRISE"].map((tag) => (
-            <span
-              key={tag}
-              className="h-6 px-3.5 inline-flex items-center justify-center text-center leading-none rounded-full border border-noir font-sans text-[10px] font-semibold uppercase tracking-widest text-text-secondary bg-transparent backdrop-blur-xs"
-            >
-              {tag}
-            </span>
-          ))}
+
+          {/* Row of 3 Outlined Tier Pills */}
+          <div className="flex items-center gap-2.5">
+            {(["FREE", "TEAM", "ENTERPRISE"] as const).map((tier) => {
+              const isSelected = selectedTier === tier;
+              return (
+                <button
+                  key={tier}
+                  type="button"
+                  onClick={() => setSelectedTier(selectedTier === tier ? null : tier)}
+                  className={`px-3 py-1 text-[11px] font-mono uppercase tracking-wider rounded-full border transition-all duration-150 cursor-pointer select-none inline-flex items-center justify-center leading-none ${
+                    isSelected
+                      ? "bg-accent-contrast text-bg-canvas border-accent-contrast shadow-sm ring-1 ring-accent-contrast/20"
+                      : "border-noir text-text-secondary bg-transparent hover:border-text-primary hover:text-text-primary hover:bg-text-primary/5 hover:-translate-y-0.5"
+                  }`}
+                  aria-pressed={isSelected}
+                >
+                  {tier}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* 3, 4, 5. Headline, Tagline, Circular Swan Emblem, and Right Actions */}
