@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { BlackSwanLogo } from "@/components/ui/BlackSwanLogo";
 
 interface PublicNavProps {
   onOpenDocs?: () => void;
@@ -14,11 +15,7 @@ export const PublicNav: React.FC<PublicNavProps> = ({ onOpenDocs }) => {
       <div className="mx-auto flex max-w-6xl items-center justify-between">
         {/* Left: Exact Swan Logo Mark */}
         <Link href="/" className="flex items-center gap-2 group">
-          <img
-            src="/swan-logo-clean.png"
-            alt="Black Swan"
-            className="h-8 w-8 object-contain"
-          />
+          <BlackSwanLogo className="w-7 h-7 text-text-primary transition-colors" />
         </Link>
 
         {/* Center: Navigation Links (All text aligned along exact optical baseline) */}

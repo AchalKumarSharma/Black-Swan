@@ -7,6 +7,7 @@ import { PublicNav } from "@/components/landing/PublicNav";
 import { Search, X, Shield, Database, LineChart, Terminal, Lock } from "lucide-react";
 
 import { DitherDistortionImage } from "@/components/ui/DitherDistortionImage";
+import { BlackSwanLogo } from "@/components/ui/BlackSwanLogo";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -78,17 +79,19 @@ export default function LandingPage() {
         <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-6 mb-7 z-10">
           {/* Left Block: Headline & Tagline */}
           <div className="flex flex-col">
-            <div className="flex items-center gap-3.5">
-              <h1 className="font-serif text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight text-text-primary">
+            <div className="inline-flex items-center gap-3">
+              <h1 className="font-serif text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight text-text-primary leading-none">
                 Black Swan
               </h1>
 
-              {/* Exact Circular Sepia-Outlined Swan Icon from Reference */}
-              <img
-                src="/swan-emblem-circle.png"
-                alt="Black Swan Emblem"
-                className="h-11 w-11 sm:h-13 sm:w-13 md:h-14 md:w-14 object-contain rounded-full border border-noir bg-bg-surface-subtle"
-              />
+              {/* Editorial / Cold War Classified Archival Ink Stamp */}
+              <div
+                className="inline-flex items-center justify-center rounded-full border border-dashed border-accent-rust/60 p-1.5 text-accent-rust -rotate-3 opacity-90 mix-blend-multiply dark:mix-blend-screen select-none transition-transform duration-300 hover:rotate-0 shrink-0"
+                aria-label="Classified Archival Seal"
+                title="Classified Archival Seal"
+              >
+                <BlackSwanLogo className="h-8 w-8 sm:h-9 sm:w-9 md:h-10 md:w-10 text-accent-rust" />
+              </div>
             </div>
 
             {/* Small-Caps Tagline */}

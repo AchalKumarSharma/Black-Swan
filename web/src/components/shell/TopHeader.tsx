@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ChevronDown, FileText, User } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { BlackSwanLogo } from "@/components/ui/BlackSwanLogo";
 
 interface TopHeaderProps {
   isSystemLive?: boolean;
@@ -15,11 +16,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ isSystemLive = true }) => 
       <div className="flex items-center gap-4">
         {/* Swan Silhouette Mark + Brand Name matching Landing Page */}
         <Link href="/" className="flex items-center gap-2.5 group">
-          <img
-            src="/swan-logo-clean.png"
-            alt="Black Swan"
-            className="h-8 w-8 object-contain"
-          />
+          <BlackSwanLogo className="w-7 h-7 text-text-primary transition-colors" />
           <span className="font-serif text-2xl font-bold tracking-tight text-text-primary">
             Black Swan
           </span>
