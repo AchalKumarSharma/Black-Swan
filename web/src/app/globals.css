@@ -1,0 +1,242 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #f4f0e8;
+  --foreground: #1a1613;
+  --color-parchment: #f4f0e8;
+  --color-parchment-light: #faf7f2;
+  --color-parchment-dark: #eae4d6;
+  --color-swan-black: #1a1613;
+  --color-swan-charcoal: #4a4540;
+  --color-swan-sepia: #6b4d3a;
+  --color-swan-rust: #8c432a;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* ── OpenType & Numeric Baseline Normalization ──
+   Forces lining (flat-baseline) and tabular (monospaced-width) figures
+   across every element so $, %, bps values never dip below cap-height. */
+html,
+body,
+h1, h2, h3, h4, h5, h6,
+p, span, div, table, th, td,
+button, input, textarea {
+  font-variant-numeric: lining-nums tabular-nums !important;
+  font-feature-settings: "lnum" 1, "tnum" 1, "kern" 1 !important;
+}
+
+body {
+  color: var(--foreground);
+  background-color: var(--background);
+  background-image: radial-gradient(rgba(107, 77, 58, 0.04) 1px, transparent 0);
+  background-size: 24px 24px;
+  font-family: var(--font-sans), Inter, system-ui, sans-serif;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbars for Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #6b4d3a #eae4d6;
+}
+
+/* Custom Scrollbars for Webkit/Blink */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #eae4d6;
+}
+::-webkit-scrollbar-thumb {
+  background: #6b4d3a;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #4a4540;
+}
+
+/* Custom Slider Styling for 007 Sandtable */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  background-color: #6b4d3a;
+  height: 4px;
+  border-radius: 2px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -6px;
+  background-color: #1a1613;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  border: 2px solid #f4f0e8;
+  box-shadow: 0 0 0 1px #1a1613;
+  transition: transform 0.1s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+input[type="range"]::-moz-range-track {
+  background-color: #6b4d3a;
+  height: 4px;
+  border-radius: 2px;
+}
+
+input[type="range"]::-moz-range-thumb {
+  background-color: #1a1613;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  border: 2px solid #f4f0e8;
+  box-shadow: 0 0 0 1px #1a1613;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   NOIR DITHER & HALFTONE TEXTURE UTILITIES
+   ───────────────────────────────────────────────────────────── */
+
+/* Inline SVG noise filter — applied via url(#noir-dither) in filter property */
+/* We use CSS-only noise via pseudo-elements for maximum portability */
+
+/* Reusable grain texture overlay — apply to a positioned parent */
+.bg-dither {
+  position: relative;
+  overflow: hidden;
+}
+.bg-dither::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.07;
+  mix-blend-mode: multiply;
+  background-image:
+    repeating-conic-gradient(#4a4540 0% 25%, transparent 0% 50%) 0 0 / 4px 4px,
+    repeating-conic-gradient(#6b4d3a 0% 25%, transparent 0% 50%) 2px 2px / 4px 4px;
+}
+
+/* Dark variant for inverted cards (e.g. 007 anchor) */
+.bg-dither-dark {
+  position: relative;
+  overflow: hidden;
+}
+.bg-dither-dark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.12;
+  mix-blend-mode: screen;
+  background-image:
+    repeating-conic-gradient(#eae4d6 0% 25%, transparent 0% 50%) 0 0 / 3px 3px,
+    repeating-conic-gradient(#f4f0e8 0% 25%, transparent 0% 50%) 1.5px 1.5px / 3px 3px;
+}
+
+/* Scanline pulse animation for active agent cards */
+@keyframes scanline-sweep {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.bg-scanline {
+  position: relative;
+  overflow: hidden;
+}
+.bg-scanline::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(107, 77, 58, 0.06) 3px,
+    rgba(107, 77, 58, 0.06) 4px
+  );
+  animation: scanline-sweep 3s linear infinite;
+}
+.bg-scanline.active::after {
+  opacity: 1;
+}
+
+/* Sepia glow border pulse for active agent cards */
+@keyframes sepia-border-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(107, 77, 58, 0); }
+  50% { box-shadow: 0 0 8px 2px rgba(107, 77, 58, 0.25); }
+}
+
+.animate-sepia-glow {
+  animation: sepia-border-glow 2.5s ease-in-out infinite;
+}
+
+/* Corner tick-mark accents for dossier cards */
+.corner-ticks {
+  position: relative;
+}
+.corner-ticks::before,
+.corner-ticks::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+  z-index: 2;
+}
+.corner-ticks::before {
+  top: 6px;
+  left: 6px;
+  border-top: 1.5px solid rgba(107, 77, 58, 0.5);
+  border-left: 1.5px solid rgba(107, 77, 58, 0.5);
+}
+.corner-ticks::after {
+  bottom: 6px;
+  right: 6px;
+  border-bottom: 1.5px solid rgba(107, 77, 58, 0.5);
+  border-right: 1.5px solid rgba(107, 77, 58, 0.5);
+}
+
+/* Dark corner ticks for inverted backgrounds */
+.corner-ticks-dark::before,
+.corner-ticks-dark::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  z-index: 2;
+}
+.corner-ticks-dark::before {
+  top: 6px;
+  left: 6px;
+  border-top: 1.5px solid rgba(244, 240, 232, 0.25);
+  border-left: 1.5px solid rgba(244, 240, 232, 0.25);
+}
+.corner-ticks-dark::after {
+  bottom: 6px;
+  right: 6px;
+  border-bottom: 1.5px solid rgba(244, 240, 232, 0.25);
+  border-right: 1.5px solid rgba(244, 240, 232, 0.25);
+}
