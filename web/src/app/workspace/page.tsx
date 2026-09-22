@@ -313,9 +313,12 @@ function WorkspaceView() {
           }}
         />
 
-        {/* Main Canvas (Independently scrollable) */}
-        <main className="flex-1 h-full overflow-y-auto px-6 py-8 lg:px-12">
-          <div className="mx-auto max-w-5xl space-y-8">
+        {/* Main Canvas (Independently scrollable with Lenis smooth momentum) */}
+        <main
+          id="workspace-canvas-scroll"
+          className="flex-1 overflow-y-auto overflow-x-hidden relative h-full"
+        >
+          <div className="mx-auto max-w-5xl space-y-8 px-6 py-8 lg:px-12 min-h-full">
             {/* Hero Query Input Area */}
             <section className="rounded-xl border border-noir bg-bg-surface p-6 shadow-none transition-colors duration-200">
               <div className="mb-3 flex items-center justify-between">

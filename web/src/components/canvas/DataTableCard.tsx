@@ -247,7 +247,7 @@ export const DataTableCard: React.FC<DataTableCardProps> = ({
       )}
 
       {/* TanStack Interactive Table with Punch-Card Telemetry Grid Watermark */}
-      <div className="relative overflow-x-auto rounded border border-noir bg-bg-canvas/50">
+      <div data-lenis-prevent className="relative overflow-x-auto rounded border border-noir bg-bg-canvas/50">
         {/* Cold War Cryptographic Punch-Card / Ledger Grid Watermark */}
         <div
           className="pointer-events-none select-none absolute inset-0 opacity-[0.06] z-0"

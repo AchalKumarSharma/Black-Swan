@@ -152,7 +152,7 @@ MI6_FP&A_SECTION_007 // RECEIPT_OK
 CIPHER_STREAM: A7-9F-3C-8E-2B-1D-4A-6E
 01010011 01010111 01000001 01001110 00110000`}</pre>
               </div>
-              <pre className="relative z-10 p-4 font-mono tabular-nums text-[11px] leading-relaxed text-emerald-400/90 overflow-x-auto selection:bg-[#f0eae0] selection:text-[#12100e] bg-transparent">
+              <pre data-lenis-prevent className="relative z-10 p-4 font-mono tabular-nums text-[11px] leading-relaxed text-emerald-400/90 overflow-x-auto selection:bg-[#f0eae0] selection:text-[#12100e] bg-transparent">
                 <code>{sqlToDisplay}</code>
               </pre>
             </div>

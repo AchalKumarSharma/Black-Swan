@@ -53,6 +53,13 @@ html {
   scroll-behavior: smooth;
 }
 
+html.lenis,
+html.lenis.lenis-smooth,
+#workspace-canvas-scroll.lenis,
+#workspace-canvas-scroll.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
 /* ── OpenType & Numeric Baseline Normalization ──
    Forces lining (flat-baseline) and tabular (monospaced-width) figures
    across every element so $, %, bps values never dip below cap-height. */
