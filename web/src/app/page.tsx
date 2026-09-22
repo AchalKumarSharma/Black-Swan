@@ -8,6 +8,7 @@ import { Search, X, Shield, Database, LineChart, Terminal, Lock } from "lucide-r
 
 import { DitherDistortionImage } from "@/components/ui/DitherDistortionImage";
 import { BlackSwanLogo } from "@/components/ui/BlackSwanLogo";
+import { JamesBondArchivalWatermark } from "@/components/ui/JamesBondArchivalWatermark";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -38,27 +39,11 @@ export default function LandingPage() {
       {/* 1. Top Navigation */}
       <PublicNav onOpenDocs={() => setIsDocsOpen(true)} />
 
+      {/* MI6 / James Bond Cold War Archival Intelligence Dossier Watermark */}
+      <JamesBondArchivalWatermark />
+
       {/* Main Container matching the reference layout */}
-      <main className="mx-auto w-full max-w-6xl px-6 sm:px-10 py-7 md:py-9 flex-1 flex flex-col justify-start relative">
-        {/* Cold War MI6 Cryptographic Radar Sweep & Cipher Strip Watermark (Top Right) */}
-        <div
-          className="pointer-events-none select-none absolute right-4 sm:right-10 top-6 overflow-hidden opacity-[0.11] hidden md:block w-72 h-44 z-0"
-          style={{ mixBlendMode: "var(--dither-blend)" as any }}
-        >
-          <svg viewBox="0 0 280 180" className="w-full h-full text-text-secondary stroke-current fill-none">
-            {/* Radar range rings */}
-            <circle cx="200" cy="90" r="75" strokeWidth="0.75" />
-            <circle cx="200" cy="90" r="50" strokeWidth="0.5" strokeDasharray="3 3" />
-            <circle cx="200" cy="90" r="25" strokeWidth="0.5" />
-            <line x1="125" y1="90" x2="275" y2="90" strokeWidth="0.5" />
-            <line x1="200" y1="15" x2="200" y2="165" strokeWidth="0.5" />
-            <line x1="200" y1="90" x2="255" y2="35" strokeWidth="1" />
-            {/* Coordinate & cipher annotations */}
-            <text x="120" y="24" fill="currentColor" stroke="none" className="font-mono text-[8px] tracking-[0.2em]">LAT 51°30'26"N LON 00°07'39"W</text>
-            <text x="120" y="36" fill="currentColor" stroke="none" className="font-mono text-[8px] tracking-[0.2em]">CIPHER // 8F-7B-2A // Q-KERNEL</text>
-            <text x="120" y="48" fill="currentColor" stroke="none" className="font-mono text-[8px] tracking-[0.2em]">CLEARANCE: MI6 EYES ONLY</text>
-          </svg>
-        </div>
+      <main className="mx-auto w-full max-w-6xl px-6 sm:px-10 py-7 md:py-9 flex-1 flex flex-col justify-start relative z-10">
 
         {/* 2. Top-Secret Stamp Watermark & Interactive Tier Selector */}
         <div className="relative flex flex-col items-start gap-2 mb-3.5 z-10">
