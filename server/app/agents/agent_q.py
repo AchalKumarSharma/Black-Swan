@@ -116,6 +116,8 @@ def _build_deterministic_sql(
     q2_cond: str,
     target_entities: Optional[List[str]] = None,
     units_col: Optional[str] = None,
+    query: Optional[str] = None,
+    expense_cols: Optional[List[str]] = None,
 ) -> str:
     """Construct deterministic analytical DuckDB SQL for each of the 5 intent categories."""
     rev_expr = f'try_cast("{revenue_col}" AS DOUBLE)'
@@ -202,6 +204,19 @@ GROUP BY "{dimension_col}"
 ORDER BY revenue DESC;"""
 
     elif intent == "GENERAL_INQUIRY":
+        if query and any(k in query.lower() for k in ["loss", "profitable", "net profit", "any loss", "losing money", "losing"]):
+            exp_selects = ""
+            exp_deductions = ""
+            if expense_cols:
+                exp_selects = "\n    " + ",\n    ".join([f'COALESCE(SUM(try_cast("{col}" AS DOUBLE)), 0) AS "total_{col.lower()}"' for col in expense_cols]) + ","
+                exp_deductions = " - " + " - ".join([f'COALESCE(SUM(try_cast("{col}" AS DOUBLE)), 0)' for col in expense_cols])
+
+            return f"""SELECT 
+    COALESCE(SUM({rev_expr}), 0) AS total_revenue,
+    COALESCE(SUM({cogs_expr}), 0) AS total_cogs,{exp_selects}
+    (COALESCE(SUM({rev_expr}), 0) - COALESCE(SUM({cogs_expr}), 0){exp_deductions}) AS net_profit_loss
+FROM "{table_name}";"""
+
         return f"""SELECT 
     "{dimension_col}" AS category,
     COUNT(*) AS transaction_count,
@@ -213,7 +228,7 @@ GROUP BY "{dimension_col}"
 ORDER BY total_revenue DESC;"""
 
     else:  # ANOMALY_INVESTIGATION
-        if query and any(k in query.lower() for k in ["loss", "profitable", "net profit", "any loss"]):
+        if query and any(k in query.lower() for k in ["loss", "profitable", "net profit", "any loss", "losing money", "losing"]):
             exp_selects = ""
             exp_deductions = ""
             if expense_cols:
@@ -513,6 +528,12 @@ async def run_agent_q(
         elif len(table_columns) > 3:
             cogs_col = table_columns[3]
 
+    expense_cols = [
+        c for c in numeric_cols
+        if c not in (revenue_col, cogs_col)
+        and any(exp_term in c.lower() for exp_term in ["expense", "opex", "marketing", "salaries", "rent", "spending", "overhead", "operating"])
+    ]
+
     # 1. Discover Periods & Construct Date / Quarter Filtering Conditions
     is_date_col = False
     try:
@@ -595,6 +616,7 @@ async def run_agent_q(
                 q2_cond=q2_cond,
                 target_entities=target_entities,
                 units_col=units_col,
+                expense_cols=expense_cols,
             )
             logger.info("Agent Q generated dynamic SQL via LiteLLM Router for intent '%s'", intent)
         except Exception as e:
@@ -619,6 +641,8 @@ async def run_agent_q(
             q2_cond=q2_cond,
             target_entities=target_entities,
             units_col=units_col,
+            query=query,
+            expense_cols=expense_cols,
         )
 
     # 3. Execute with Strict Read-Only Validation & Self-Healing Retry Loop (up to 2 retries)
@@ -670,6 +694,8 @@ async def run_agent_q(
                 q2_cond=q2_cond,
                 target_entities=target_entities,
                 units_col=units_col,
+                query=query,
+                expense_cols=expense_cols,
             )
             continue
 
@@ -720,6 +746,8 @@ async def run_agent_q(
                     q2_cond=q2_cond,
                     target_entities=target_entities,
                     units_col=units_col,
+                    query=query,
+                    expense_cols=expense_cols,
                 )
 
     # 4. Fallback execution if all retries failed
@@ -736,6 +764,8 @@ async def run_agent_q(
             q2_cond=q2_cond,
             target_entities=target_entities,
             units_col=units_col,
+            query=query,
+            expense_cols=expense_cols,
         )
         is_safe, _ = validate_read_only_sql(safe_fallback)
         if is_safe:
@@ -856,7 +886,8 @@ async def run_agent_q(
             w in query.lower()
             for w in [
                 "loss", "losses", "profitable", "profit or loss", "net profit", "net loss",
-                "making profit", "make profit", "incur loss", "any loss"
+                "making profit", "make profit", "incur loss", "any loss", "losing money",
+                "losing", "lose money", "am i facing loss", "am i profitable", "are we losing money"
             ]
         )
     )
@@ -1210,26 +1241,146 @@ async def run_agent_q(
             }
 
     elif intent == "GENERAL_INQUIRY":
-        total_rev = sum(float(r.get("total_revenue") or r.get("revenue") or 0) for r in rows)
+        # Extract revenue, cogs, and opex from query rows or query DuckDB directly
+        total_rev = sum(float(r.get("total_revenue") or r.get("revenue") or r.get("sales") or 0) for r in rows)
+        total_cogs = sum(float(r.get("total_cogs") or r.get("cogs") or r.get("cost") or 0) for r in rows)
+        total_opex = 0.0
+        for r in rows:
+            for k, v in r.items():
+                k_lower = k.lower()
+                if any(exp in k_lower for exp in ["expense", "opex", "marketing", "overhead", "salaries", "rent"]) and k_lower not in ("total_cogs", "cogs", "cost"):
+                    try:
+                        total_opex += float(v or 0)
+                    except (ValueError, TypeError):
+                        pass
+
+        # Check if rows contained net_profit_loss directly
+        net_pl_from_rows = None
+        for r in rows:
+            for k in ["net_profit_loss", "net_profit", "net_income", "profit_loss"]:
+                if k in r and r[k] is not None:
+                    try:
+                        net_pl_from_rows = float(r[k])
+                        break
+                    except (ValueError, TypeError):
+                        pass
+            if net_pl_from_rows is not None:
+                break
+
+        # Fallback to direct DuckDB aggregates if query didn't return cost columns
+        if total_rev == 0 or (total_cogs == 0 and total_opex == 0):
+            try:
+                exp_terms = [f'COALESCE(SUM(try_cast("{col}" AS DOUBLE)), 0) AS "{col.lower()}"' for col in (expense_cols or [])]
+                exp_sql = (",\n    " + ",\n    ".join(exp_terms)) if exp_terms else ""
+                fallback_df = query_dataset(
+                    table_name,
+                    f"""SELECT 
+                        COALESCE(SUM(try_cast("{revenue_col}" AS DOUBLE)), 0) AS total_revenue,
+                        COALESCE(SUM(try_cast("{cogs_col}" AS DOUBLE)), 0) AS total_cogs{exp_sql}
+                    FROM "{table_name}";"""
+                )
+                if len(fallback_df) > 0:
+                    fb_row = fallback_df.to_dicts()[0]
+                    if total_rev == 0:
+                        total_rev = float(fb_row.get("total_revenue", 0))
+                    if total_cogs == 0:
+                        total_cogs = float(fb_row.get("total_cogs", 0))
+                    for col in (expense_cols or []):
+                        total_opex += float(fb_row.get(col.lower(), 0))
+            except Exception as e:
+                logger.warning("Could not query aggregate revenue and costs from DuckDB: %s", e)
+
+        total_costs = total_cogs + total_opex
+        net_profit_loss = net_pl_from_rows if net_pl_from_rows is not None else (total_rev - total_costs)
+        disc_pct = round(((total_rev - total_costs) / total_rev * 100), 2) if total_rev > 0 else 0.0
+
         first_row = rows[0] if rows else {}
         first_cat = str(first_row.get("category") or first_row.get(dimension_col) or "Portfolio")
-        scanned_metrics = [c for c in table_headers if c in ("revenue", "cogs", "operating_expenses", "marketing", "units_sold", "total_revenue", "total_cogs")]
-        metrics_str = ", ".join(scanned_metrics) if scanned_metrics else "ledger aggregates"
-        summary_findings = [
-            f"Ledger analysis scanned {len(rows)} reporting partitions across metrics: {metrics_str}.",
-            f"Consolidated top-line volume across partitions totaled {curr_symbol}{total_rev:,.0f}.",
-            f"Evaluated distribution on table '{table_name}' for dimension '{dimension_col}'.",
-        ]
-        anomalies_detected = []
-        narrative = f"Diagnostic inquiry evaluated {len(rows)} reporting partitions across {metrics_str} on table '{table_name}'."
-        anomaly_data = {
-            "region": first_cat,
-            "expectedVolume": total_rev,
-            "actualBilled": total_rev,
-            "varianceBps": 0,
-            "discrepancyPct": 0.0,
-            "currencySymbol": curr_symbol,
-        }
+        resp_style = m_plan.get("response_style") or "DIRECT_BINARY"
+
+        if is_pl_query:
+            if net_profit_loss >= 0:
+                cost_details = []
+                if total_cogs > 0:
+                    cost_details.append(f"COGS: {format_currency_human(total_cogs, curr_symbol)}")
+                if total_opex > 0:
+                    cost_details.append(f"Operating Expenses: {format_currency_human(total_opex, curr_symbol)}")
+                cost_summary_str = f" ({', '.join(cost_details)})" if cost_details else ""
+
+                if resp_style == "DIRECT_BINARY":
+                    summary_findings = [
+                        f"No. The business generated a net profit of {format_currency_human(net_profit_loss, curr_symbol)} across the evaluated period.",
+                        f"Top-line revenue reached {format_currency_human(total_rev, curr_symbol)} against consolidated expenses of {format_currency_human(total_costs, curr_symbol)}{cost_summary_str} (net margin: {disc_pct:.2f}%).",
+                        "Zero net financial loss detected across all operating divisions.",
+                    ]
+                    narrative = (
+                        f"No. The company is profitable with a net profit of {format_currency_human(net_profit_loss, curr_symbol)} in the evaluated period. "
+                        f"Revenue reached {format_currency_human(total_rev, curr_symbol)} against total expenses of {format_currency_human(total_costs, curr_symbol)} "
+                        f"(net operating margin: {disc_pct:.2f}%)."
+                    )
+                else:
+                    summary_findings = [
+                        f"Business is profitable overall. Total net profit recorded at {format_currency_human(net_profit_loss, curr_symbol)} across the evaluated period.",
+                        f"Top-line revenue totaled {format_currency_human(total_rev, curr_symbol)} against consolidated costs of {format_currency_human(total_costs, curr_symbol)}{cost_summary_str} (net margin: {disc_pct:.2f}%).",
+                        "Operational health check confirms positive operating leverage with no enterprise-level net loss.",
+                    ]
+                    narrative = (
+                        f"Comprehensive financial audit confirms the business is profitable overall. "
+                        f"Total net profit stands at {format_currency_human(net_profit_loss, curr_symbol)} on consolidated revenue of {format_currency_human(total_rev, curr_symbol)} "
+                        f"(delivering a {disc_pct:.2f}% net profit margin). Aggregate operational costs totaled {format_currency_human(total_costs, curr_symbol)}, "
+                        f"demonstrating healthy solvency and positive cash generation."
+                    )
+            else:
+                loss_abs = abs(net_profit_loss)
+                if resp_style == "DIRECT_BINARY":
+                    summary_findings = [
+                        f"Yes. Net loss of {format_currency_human(loss_abs, curr_symbol)} detected across operations.",
+                        f"Consolidated expenses of {format_currency_human(total_costs, curr_symbol)} exceeded top-line revenue of {format_currency_human(total_rev, curr_symbol)} (net deficit margin: {disc_pct:.2f}%).",
+                        "Immediate expense containment required to restore positive operating margin.",
+                    ]
+                    narrative = (
+                        f"Yes. An enterprise net loss of {format_currency_human(loss_abs, curr_symbol)} was detected. "
+                        f"Total costs of {format_currency_human(total_costs, curr_symbol)} exceeded revenue of {format_currency_human(total_rev, curr_symbol)}."
+                    )
+                else:
+                    summary_findings = [
+                        f"Net loss detected. Total net loss recorded at {format_currency_human(loss_abs, curr_symbol)}.",
+                        f"Consolidated costs of {format_currency_human(total_costs, curr_symbol)} exceeded top-line revenue of {format_currency_human(total_rev, curr_symbol)} (net deficit margin: {disc_pct:.2f}%).",
+                        "Immediate operational remediation recommended to contain expense creep and restore positive margin leverage.",
+                    ]
+                    narrative = (
+                        f"Financial audit detected an enterprise net loss of {format_currency_human(loss_abs, curr_symbol)}. "
+                        f"Consolidated costs of {format_currency_human(total_costs, curr_symbol)} exceeded top-line revenue of {format_currency_human(total_rev, curr_symbol)}."
+                    )
+            anomalies_detected = []
+            anomaly_data = {
+                "region": "All Operations",
+                "expectedVolume": total_rev,
+                "actualBilled": total_costs,
+                "netProfitLoss": net_profit_loss,
+                "varianceBps": int(disc_pct * 100),
+                "discrepancyPct": disc_pct,
+                "currencySymbol": curr_symbol,
+            }
+        else:
+            scanned_metrics = [c for c in table_headers if c in ("revenue", "cogs", "operating_expenses", "marketing", "units_sold", "total_revenue", "total_cogs")]
+            metrics_str = ", ".join(scanned_metrics) if scanned_metrics else "ledger aggregates"
+            summary_findings = [
+                f"Ledger analysis scanned {len(rows)} reporting partitions across metrics: {metrics_str}.",
+                f"Consolidated top-line volume across partitions totaled {curr_symbol}{total_rev:,.0f}.",
+                f"Consolidated costs totaled {curr_symbol}{total_costs:,.0f} (Net Result: {curr_symbol}{net_profit_loss:,.0f}).",
+            ]
+            anomalies_detected = []
+            narrative = f"Diagnostic inquiry evaluated {len(rows)} reporting partitions across {metrics_str} on table '{table_name}'."
+            anomaly_data = {
+                "region": first_cat,
+                "expectedVolume": total_rev,
+                "actualBilled": total_costs,
+                "netProfitLoss": net_profit_loss,
+                "varianceBps": int(disc_pct * 100),
+                "discrepancyPct": disc_pct,
+                "currencySymbol": curr_symbol,
+            }
 
     else:
         # Check if query calculated net profit / loss or overall financial aggregates
@@ -1249,6 +1400,30 @@ async def run_agent_q(
         tot_opex = _extract_metric(pl_row, ["operating_expenses", "opex", "operating_expenses_inr"])
         tot_mkt = _extract_metric(pl_row, ["marketing", "marketing_inr", "mkt"])
         tot_costs = tot_cogs + tot_opex + tot_mkt
+
+        if is_pl_query and (tot_rev == 0 or (tot_cogs == 0 and tot_opex == 0)):
+            try:
+                exp_terms = [f'COALESCE(SUM(try_cast("{col}" AS DOUBLE)), 0) AS "{col.lower()}"' for col in (expense_cols or [])]
+                exp_sql = (",\n    " + ",\n    ".join(exp_terms)) if exp_terms else ""
+                fallback_df = query_dataset(
+                    table_name,
+                    f"""SELECT 
+                        COALESCE(SUM(try_cast("{revenue_col}" AS DOUBLE)), 0) AS total_revenue,
+                        COALESCE(SUM(try_cast("{cogs_col}" AS DOUBLE)), 0) AS total_cogs{exp_sql}
+                    FROM "{table_name}";"""
+                )
+                if len(fallback_df) > 0:
+                    fb_row = fallback_df.to_dicts()[0]
+                    if tot_rev == 0:
+                        tot_rev = float(fb_row.get("total_revenue", 0))
+                    if tot_cogs == 0:
+                        tot_cogs = float(fb_row.get("total_cogs", 0))
+                    for col in (expense_cols or []):
+                        tot_opex += float(fb_row.get(col.lower(), 0))
+                    tot_costs = tot_cogs + tot_opex
+                    net_profit_val = tot_rev - tot_costs
+            except Exception as e:
+                logger.warning("Could not query aggregate revenue and costs from DuckDB: %s", e)
 
         if net_profit_val is None and (tot_rev > 0 and (tot_cogs > 0 or tot_costs > 0)) and (is_pl_query or (tot_opex > 0 or tot_mkt > 0)):
             net_profit_val = tot_rev - tot_costs

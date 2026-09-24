@@ -70,6 +70,12 @@ def classify_intent_heuristic(
         if "why" in q_lower or "drop" in q_lower or "cause" in q_lower:
             return "ANOMALY_INVESTIGATION"
 
+    # Direct ledger / profit / loss verification checks route cleanly to GENERAL_INQUIRY (Ledger Inquiry)
+    if re.search(r"^(am|is|are|do|does|did|have|has)\b", q_lower) and any(
+        k in q_lower for k in ["loss", "losses", "profitable", "profit", "losing money", "losing", "incur loss", "any loss"]
+    ):
+        return "GENERAL_INQUIRY"
+
     # 1. ANOMALY_INVESTIGATION: Specific root cause questions, why questions, drop/spike anomalies, loss inquiries
     if any(k in q_lower for k in [
         "why did", "why has", "why is", "root cause", "culprit", "covenant",
@@ -121,13 +127,14 @@ def classify_response_style(query: str, intent: str) -> str:
         return "EXPLORATORY_DETAILED"
 
     # Explicit binary / single-check verification questions
-    # e.g., "Is there any loss?", "Are sales growing?", "Did we beat target?", "Is our business profitable?"
+    # e.g., "Am I facing loss?", "Am I profitable?", "Are we losing money?", "Is there any loss?", "Are sales growing?", "Did we beat target?"
     binary_patterns = [
-        r"^(is|are|did|do|does|has|have|can|will|was|were)\b",
+        r"^(am|is|are|did|do|does|has|have|can|will|was|were)\b",
         r"\bis there (any|a)\b",
         r"\bare there (any)?\b",
         r"\bany loss(es)?\b",
         r"\bprofitable\b",
+        r"\blosing money\b",
         r"\bbeat target\b",
         r"\bon track\b",
         r"\bgrowing or dropping\b",
@@ -212,12 +219,24 @@ def get_intent_defaults(
             strategic_focus = f"Comparative breakdown of revenue and margin health across {dimension_col} segments."
 
     elif intent == "GENERAL_INQUIRY":
-        hypotheses = [
-            f"Underlying ledger entries provide factual resolution for user inquiry '{query}'.",
-        ]
-        metrics = [period_col, dimension_col, revenue_col, cogs_col]
-        sql_objective = f"Query ledger aggregates, metrics, and summary distributions answering: {query}"
-        strategic_focus = f"Factual ledger inquiry resolution for {query}"
+        if any(k in query.lower() for k in ["loss", "losses", "profit", "net profit", "profitable", "any loss", "losing money", "losing"]):
+            hypotheses = [
+                f"Consolidated top-line '{revenue_col}' exceeds total operating expenditures across '{dimension_col}', delivering overall enterprise profitability.",
+                f"Individual cost components (COGS, marketing, opex) have remained within budget thresholds without causing net operating deficit.",
+                f"Operating margin remains positive across the evaluated intervals with no material solvency concerns.",
+            ]
+            metrics = [revenue_col, cogs_col, "total_revenue", "total_cogs", "net_profit_loss"]
+            sql_objective = (
+                f"Calculate total revenue, total COGS, and all operational expenses across the dataset to determine if the business operates at a net profit or net loss."
+            )
+            strategic_focus = "Enterprise net profitability verification and expense solvency audit."
+        else:
+            hypotheses = [
+                f"Underlying ledger entries provide factual resolution for user inquiry '{query}'.",
+            ]
+            metrics = [period_col, dimension_col, revenue_col, cogs_col]
+            sql_objective = f"Query ledger aggregates, metrics, and summary distributions answering: {query}"
+            strategic_focus = f"Factual ledger inquiry resolution for {query}"
 
     elif intent == "OUT_OF_SCOPE":
         hypotheses = [
@@ -396,6 +415,13 @@ async def run_m_director(
             llm_style = str(parsed.get("response_style", "")).upper()
             if llm_style in ("DIRECT_BINARY", "EXPLORATORY_DETAILED"):
                 response_style = llm_style
+
+            # Direct ledger / profit / loss verification checks route cleanly to GENERAL_INQUIRY / DIRECT_BINARY
+            if re.search(r"^(am|is|are|do|does|did|have|has)\b", query.lower().strip()) and any(
+                k in query.lower() for k in ["loss", "losses", "profitable", "profit", "losing money", "losing", "any loss"]
+            ):
+                intent = "GENERAL_INQUIRY"
+                response_style = "DIRECT_BINARY"
 
             hypotheses = parsed.get("hypotheses") or hypotheses
             required_metrics = parsed.get("required_metrics") or required_metrics

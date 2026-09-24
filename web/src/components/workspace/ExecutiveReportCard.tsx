@@ -138,12 +138,64 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
     setTimeout(() => setCopiedSql(false), 2000);
   };
 
-  // Recharts spec setup
-  const xAxisKey = eveAudit?.chart_spec?.x_axis_key || "period";
-  const seriesList = eveAudit?.chart_spec?.series || [
-    { key: "revenue", label: "Revenue", color_role: "primary" },
-    { key: "cogs", label: "COGS", color_role: "comparison" },
-  ];
+  // Dynamic Recharts spec setup with Agent Q fallback support while eveAudit is pending
+  const rows = qDiagnostic?.rows || [];
+  const firstRow = rows[0] || {};
+  const rowKeys = Object.keys(firstRow);
+
+  const xAxisKey = React.useMemo(() => {
+    if (eveAudit?.chart_spec?.x_axis_key) {
+      const specKey = eveAudit.chart_spec.x_axis_key;
+      const matched = rowKeys.find((k) => k.toLowerCase() === specKey.toLowerCase());
+      if (matched) return matched;
+      return specKey;
+    }
+    // Default fallback when eveAudit is pending:
+    const regionKey = rowKeys.find((k) => k.toLowerCase() === "region");
+    if (regionKey) return regionKey;
+    for (const pref of ["period", "quarter", "month", "date", "segment", "category", "dimension"]) {
+      const found = rowKeys.find((k) => k.toLowerCase() === pref);
+      if (found) return found;
+    }
+    return rowKeys.length > 0 ? rowKeys[0] : "region";
+  }, [eveAudit?.chart_spec?.x_axis_key, rowKeys]);
+
+  const seriesList = React.useMemo(() => {
+    if (eveAudit?.chart_spec?.series && eveAudit.chart_spec.series.length > 0) {
+      return eveAudit.chart_spec.series;
+    }
+    // Fallback when eveAudit is pending:
+    // 1. Look for keys ending in _gm_pct or margin (e.g. q1_gm_pct, q2_gm_pct)
+    const gmPctKeys = rowKeys.filter((k) => k.toLowerCase().endsWith("_gm_pct") || k.toLowerCase().includes("margin"));
+    if (gmPctKeys.length >= 2) {
+      return [
+        { key: gmPctKeys[0], label: gmPctKeys[0].toUpperCase().replace(/_/g, " "), color_role: "primary" },
+        { key: gmPctKeys[1], label: gmPctKeys[1].toUpperCase().replace(/_/g, " "), color_role: "comparison" },
+      ];
+    }
+    // 2. Look for explicit q1 / q2 revenue or revenue / cogs
+    const qRevKeys = rowKeys.filter((k) => k.toLowerCase().includes("revenue"));
+    if (qRevKeys.length >= 2) {
+      return [
+        { key: qRevKeys[0], label: qRevKeys[0].toUpperCase().replace(/_/g, " "), color_role: "primary" },
+        { key: qRevKeys[1], label: qRevKeys[1].toUpperCase().replace(/_/g, " "), color_role: "comparison" },
+      ];
+    }
+    const hasRev = rowKeys.find((k) => k.toLowerCase() === "revenue" || k.toLowerCase() === "total_revenue");
+    const hasCogs = rowKeys.find((k) => k.toLowerCase() === "cogs" || k.toLowerCase() === "total_cogs");
+    if (hasRev && hasCogs) {
+      return [
+        { key: hasRev, label: "Revenue", color_role: "primary" },
+        { key: hasCogs, label: "COGS", color_role: "comparison" },
+      ];
+    }
+    // 3. Default to Agent Q's standard anomaly keys
+    return [
+      { key: "q1_gm_pct", label: "Q1 Gross Margin %", color_role: "primary" },
+      { key: "q2_gm_pct", label: "Q2 Gross Margin %", color_role: "comparison" },
+    ];
+  }, [eveAudit?.chart_spec?.series, rowKeys]);
+
   const isPctMetric = seriesList.every((s: any) => {
     const k = String(s.key || "").toLowerCase();
     const l = String(s.label || "").toLowerCase();
@@ -370,59 +422,72 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
               // Clean KPI Pill Metrics Grid for Binary / Single-Aggregate inquiries
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
                 {/* Metric 1: Solvency / Net Status */}
-                <div className="rounded-lg border border-noir bg-bg-canvas p-3.5 space-y-1">
-                  <span className="font-display text-[10px] font-bold uppercase tracking-wider text-text-muted block">
-                    Enterprise Net Result
-                  </span>
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-mono text-base sm:text-lg font-bold text-text-primary">
-                      {formatCurrencyHuman(
-                        anomalyData.netProfitLoss ?? (anomalyData.expectedVolume - anomalyData.actualBilled),
-                        currSymbol
-                      )}
-                    </span>
-                    <span
-                      className={`font-mono text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${
-                        (anomalyData.netProfitLoss ?? 0) >= 0
-                          ? "bg-emerald-950/40 text-emerald-300 border border-emerald-800/40"
-                          : "bg-rose-950/40 text-rose-300 border border-rose-800/40"
-                      }`}
-                    >
-                      {(anomalyData.netProfitLoss ?? 0) >= 0 ? "Profitable" : "Deficit"}
-                    </span>
-                  </div>
-                  <span className="font-body text-[11px] text-text-secondary block">
-                    {anomalyData.discrepancyPct !== undefined
-                      ? `${anomalyData.discrepancyPct.toFixed(2)}% Operating Margin`
-                      : "Positive Cash Generation"}
-                  </span>
-                </div>
+                {(() => {
+                  const rawRevenue = Number(anomalyData.expectedVolume) || 0;
+                  const rawCosts = Number(anomalyData.actualBilled) || 0;
+                  const netProfitLoss = anomalyData.netProfitLoss !== undefined
+                    ? Number(anomalyData.netProfitLoss)
+                    : (rawRevenue - rawCosts);
+                  const isProfitable = netProfitLoss >= 0;
+                  const operatingMarginPct = rawRevenue > 0
+                    ? ((rawRevenue - rawCosts) / rawRevenue) * 100
+                    : (anomalyData.discrepancyPct !== undefined ? Number(anomalyData.discrepancyPct) : 0);
 
-                {/* Metric 2: Consolidated Revenue */}
-                <div className="rounded-lg border border-noir bg-bg-canvas p-3.5 space-y-1">
-                  <span className="font-display text-[10px] font-bold uppercase tracking-wider text-text-muted block">
-                    Total Revenue
-                  </span>
-                  <span className="font-mono text-base sm:text-lg font-bold text-text-primary block">
-                    {formatCurrencyHuman(anomalyData.expectedVolume || 8055000, currSymbol)}
-                  </span>
-                  <span className="font-body text-[11px] text-text-secondary block">
-                    Consolidated Realization
-                  </span>
-                </div>
+                  return (
+                    <>
+                      <div className="rounded-lg border border-noir bg-bg-canvas p-3.5 space-y-1">
+                        <span className="font-display text-[10px] font-bold uppercase tracking-wider text-text-muted block">
+                          Enterprise Net Result
+                        </span>
+                        <div className="flex items-baseline gap-2">
+                          <span className="font-mono text-base sm:text-lg font-bold text-text-primary">
+                            {formatCurrencyHuman(netProfitLoss, currSymbol)}
+                          </span>
+                          <span
+                            className={`font-mono text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${
+                              isProfitable
+                                ? "bg-emerald-950/40 text-emerald-300 border border-emerald-800/40"
+                                : "bg-rose-950/40 text-rose-300 border border-rose-800/40"
+                            }`}
+                          >
+                            {isProfitable ? "PROFITABLE" : "NET LOSS"}
+                          </span>
+                        </div>
+                        <span className="font-body text-[11px] text-text-secondary block">
+                          {!isNaN(operatingMarginPct) && isFinite(operatingMarginPct)
+                            ? `${operatingMarginPct.toFixed(2)}% Operating Margin`
+                            : "Zero Impairment Detected"}
+                        </span>
+                      </div>
 
-                {/* Metric 3: Total Expenses */}
-                <div className="rounded-lg border border-noir bg-bg-canvas p-3.5 space-y-1">
-                  <span className="font-display text-[10px] font-bold uppercase tracking-wider text-text-muted block">
-                    Total Costs &amp; Opex
-                  </span>
-                  <span className="font-mono text-base sm:text-lg font-bold text-text-primary block">
-                    {formatCurrencyHuman(anomalyData.actualBilled || 6448000, currSymbol)}
-                  </span>
-                  <span className="font-body text-[11px] text-text-secondary block">
-                    COGS + Opex + Marketing
-                  </span>
-                </div>
+                      {/* Metric 2: Consolidated Revenue */}
+                      <div className="rounded-lg border border-noir bg-bg-canvas p-3.5 space-y-1">
+                        <span className="font-display text-[10px] font-bold uppercase tracking-wider text-text-muted block">
+                          Total Revenue
+                        </span>
+                        <span className="font-mono text-base sm:text-lg font-bold text-text-primary block">
+                          {formatCurrencyHuman(rawRevenue, currSymbol)}
+                        </span>
+                        <span className="font-body text-[11px] text-text-secondary block">
+                          Consolidated Realization
+                        </span>
+                      </div>
+
+                      {/* Metric 3: Total Expenses */}
+                      <div className="rounded-lg border border-noir bg-bg-canvas p-3.5 space-y-1">
+                        <span className="font-display text-[10px] font-bold uppercase tracking-wider text-text-muted block">
+                          Total Costs &amp; Opex
+                        </span>
+                        <span className="font-mono text-base sm:text-lg font-bold text-text-primary block">
+                          {formatCurrencyHuman(rawCosts, currSymbol)}
+                        </span>
+                        <span className="font-body text-[11px] text-text-secondary block">
+                          COGS + Opex + Marketing
+                        </span>
+                      </div>
+                    </>
+                  );
+                })()}
 
                 {/* Metric 4: Covenant Verification */}
                 <div className="rounded-lg border border-noir bg-bg-canvas p-3.5 space-y-1">
@@ -483,8 +548,17 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                       {eveAudit?.chart_spec?.chart_type === "line" ? (
                         <LineChart data={qDiagnostic?.rows || []} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="var(--border-noir)" opacity={0.3} />
-                          <XAxis dataKey={xAxisKey} tick={{ fill: "var(--text-muted)", fontSize: 11 }} />
-                          <YAxis tick={{ fill: "var(--text-muted)", fontSize: 11 }} />
+                          <XAxis
+                            dataKey={xAxisKey}
+                            tick={{ fill: "#A3A3A3", fontSize: 11 }}
+                            axisLine={{ stroke: "#333333" }}
+                            tickLine={{ stroke: "#333333" }}
+                          />
+                          <YAxis
+                            tick={{ fill: "#A3A3A3", fontSize: 11 }}
+                            axisLine={{ stroke: "#333333" }}
+                            tickLine={{ stroke: "#333333" }}
+                          />
                           <Tooltip content={<CustomTooltip />} />
                           {seriesList.map((s: any, idx: number) => (
                             <Line
@@ -501,8 +575,17 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                       ) : (
                         <BarChart data={qDiagnostic?.rows || []} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="var(--border-noir)" opacity={0.3} />
-                          <XAxis dataKey={xAxisKey} tick={{ fill: "var(--text-muted)", fontSize: 11 }} />
-                          <YAxis tick={{ fill: "var(--text-muted)", fontSize: 11 }} />
+                          <XAxis
+                            dataKey={xAxisKey}
+                            tick={{ fill: "#A3A3A3", fontSize: 11 }}
+                            axisLine={{ stroke: "#333333" }}
+                            tickLine={{ stroke: "#333333" }}
+                          />
+                          <YAxis
+                            tick={{ fill: "#A3A3A3", fontSize: 11 }}
+                            axisLine={{ stroke: "#333333" }}
+                            tickLine={{ stroke: "#333333" }}
+                          />
                           <Tooltip content={<CustomTooltip />} />
                           {seriesList.map((s: any, idx: number) => (
                             <Bar
