@@ -8,13 +8,7 @@ import {
   AgentStatusRail,
   AgentStepState,
 } from "@/components/AgentStatusRail";
-import { DataTableCard } from "@/components/canvas/DataTableCard";
-import { RootCauseCallout } from "@/components/canvas/RootCauseCallout";
-import { DynamicVisualCard } from "@/components/canvas/DynamicVisualCard";
-import { AuditDrawer } from "@/components/canvas/AuditDrawer";
-import { StrategySandtable } from "@/components/canvas/StrategySandtable";
-import { ExecutiveVerdict } from "@/components/canvas/ExecutiveVerdict";
-import { VisualEvidence } from "@/components/canvas/VisualEvidence";
+import { ExecutiveReportCard } from "@/components/workspace/ExecutiveReportCard";
 import {
   M_Plan,
   Q_Diagnostic,
@@ -776,114 +770,18 @@ function WorkspaceView() {
               />
             )}
 
-            {/* 4. Progressive Canvas Investigation Reports (Appended Down Canvas) */}
+            {/* 4. Progressive Canvas Investigation Reports (Unified Executive Blocks) */}
             {reports.length > 0 && (
-              <div className="space-y-12">
-                {reports.map((report, idx) => (
-                  <div
+              <div className="space-y-8">
+                {reports.map((report) => (
+                  <ExecutiveReportCard
                     key={report.id}
-                    className="space-y-6 pt-6 border-t border-noir first:border-t-0 first:pt-0"
-                  >
-                    {/* Inquiry Session Separator Header */}
-                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-noir bg-bg-surface px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-rust/15 font-mono text-xs font-bold text-accent-rust border border-accent-rust/30">
-                          {idx + 1}
-                        </span>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-display text-sm font-bold text-text-primary">
-                              {report.query}
-                            </span>
-                            {report.mPlan?.intent && (
-                              <span className="rounded bg-bg-canvas border border-noir px-2 py-0.5 font-mono text-[10px] uppercase text-text-secondary">
-                                {report.mPlan.intent}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2.5">
-                        {report.quotaExceeded && (
-                          <span className="inline-flex items-center gap-1.5 rounded bg-amber-950/40 border border-amber-800/40 px-2.5 py-0.5 font-mono text-[10px] text-amber-300 uppercase font-medium">
-                            <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-                            Deterministic Engine (Quota Preserved)
-                          </span>
-                        )}
-                        <span className="font-mono text-[11px] text-text-muted">
-                          {new Date(report.timestamp).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            second: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Out of Scope Refusal Card */}
-                    {report.outOfScope && (
-                      <div className="rounded-xl border border-noir bg-bg-surface p-6 space-y-4">
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-accent-rust/30 bg-accent-rust/10 text-accent-rust">
-                            <Sparkles className="h-4 w-4" />
-                          </div>
-                          <div className="space-y-1">
-                            <h4 className="font-display text-xs font-bold uppercase tracking-wider text-text-primary">
-                              Inquiry Outside Financial Scope
-                            </h4>
-                            <p className="font-body text-xs text-text-secondary leading-relaxed">
-                              {report.outOfScope.refusal_message}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="pt-3 border-t border-noir">
-                          <span className="font-display text-[10px] font-bold uppercase tracking-widest text-text-muted block mb-2">
-                            Suggested Financial Inquiries:
-                          </span>
-                          <div className="flex flex-wrap gap-2">
-                            {report.outOfScope.suggested_queries.map((sq) => (
-                              <button
-                                key={sq}
-                                type="button"
-                                onClick={() => {
-                                  setQuery(sq);
-                                  handleStartAnalysis(sq);
-                                }}
-                                className="rounded-full border border-noir px-3.5 py-1 font-body text-[10px] font-bold uppercase tracking-widest text-text-secondary bg-transparent hover:border-text-primary hover:text-text-primary transition-colors cursor-pointer"
-                              >
-                                {sq}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Tier 1: Executive Verdict & Strategic Levers */}
-                    {report.qDiagnostic && (
-                      <ExecutiveVerdict
-                        diagnostic={report.qDiagnostic}
-                        strategy={report.strategy007}
-                      />
-                    )}
-
-                    {/* Tier 2: Visual Evidence & Supporting Ledger */}
-                    {report.eveAudit && (
-                      <VisualEvidence
-                        audit={report.eveAudit}
-                        diagnostic={report.qDiagnostic || undefined}
-                        currencySymbol={report.qDiagnostic?.anomalyData?.currencySymbol}
-                      />
-                    )}
-
-                    {/* Tier 3: Verification Proof & SQL Receipt */}
-                    {report.eveAudit && (
-                      <AuditDrawer
-                        audit={report.eveAudit}
-                        diagnostic={report.qDiagnostic || undefined}
-                      />
-                    )}
-                  </div>
+                    report={report}
+                    onSelectQuery={(sq) => {
+                      setQuery(sq);
+                      handleStartAnalysis(sq);
+                    }}
+                  />
                 ))}
               </div>
             )}

@@ -11,6 +11,8 @@ import polars as pl
 from app.config import get_settings
 from app.core.duckdb import get_duckdb, query_dataset, sanitize_table_name
 from app.core.entity_resolver import resolve_query_dimension_and_entities
+from app.core.formatters import format_currency_human
+from app.core.llm_router import route_completion
 
 logger = logging.getLogger("blackswan.agents.q")
 
@@ -211,6 +213,19 @@ GROUP BY "{dimension_col}"
 ORDER BY total_revenue DESC;"""
 
     else:  # ANOMALY_INVESTIGATION
+        if query and any(k in query.lower() for k in ["loss", "profitable", "net profit", "any loss"]):
+            exp_selects = ""
+            exp_deductions = ""
+            if expense_cols:
+                exp_selects = "\n    " + ",\n    ".join([f'COALESCE(SUM(try_cast("{col}" AS DOUBLE)), 0) AS "total_{col.lower()}"' for col in expense_cols]) + ","
+                exp_deductions = " - " + " - ".join([f'COALESCE(SUM(try_cast("{col}" AS DOUBLE)), 0)' for col in expense_cols])
+
+            return f"""SELECT 
+    COALESCE(SUM({rev_expr}), 0) AS total_revenue,
+    COALESCE(SUM({cogs_expr}), 0) AS total_cogs,{exp_selects}
+    (COALESCE(SUM({rev_expr}), 0) - COALESCE(SUM({cogs_expr}), 0){exp_deductions}) AS net_profit_loss
+FROM "{table_name}";"""
+
         return f"""SELECT 
     "{dimension_col}" AS region,
     COALESCE(SUM(CASE WHEN {q1_cond} THEN {rev_expr} END), 0) AS q1_revenue,
@@ -228,7 +243,7 @@ ORDER BY total_revenue DESC;"""
            NULLIF(COALESCE(SUM(CASE WHEN {q1_cond} THEN {rev_expr} END), 0), 0)) * 100, 2) AS q1_gm_pct,
     ROUND(((COALESCE(SUM(CASE WHEN {q2_cond} THEN {rev_expr} END), 0) - 
             COALESCE(SUM(CASE WHEN {q2_cond} THEN {cogs_expr} END), 0)) / 
-           NULLIF(COALESCE(SUM(CASE WHEN {q2_cond} THEN {rev_expr} END), 0), 0)) * 100, 2) AS q2_gm_pct,
+           NULLIF(COALESCE(SUM(CASE WHEN {q2_cond} THEN {cogs_expr} END), 0), 0)) * 100, 2) AS q2_gm_pct,
     ROUND((
         ((COALESCE(SUM(CASE WHEN {q2_cond} THEN {rev_expr} END), 0) - 
           COALESCE(SUM(CASE WHEN {q2_cond} THEN {cogs_expr} END), 0)) / 
@@ -242,8 +257,7 @@ GROUP BY "{dimension_col}"
 ORDER BY gm_variance_bps ASC;"""
 
 
-async def _generate_sql_with_gemini(
-    client: Any,
+async def _generate_sql_with_llm(
     query: str,
     intent: str,
     sql_objective: str,
@@ -258,8 +272,9 @@ async def _generate_sql_with_gemini(
     q2_cond: str,
     target_entities: Optional[List[str]] = None,
     units_col: Optional[str] = None,
+    expense_cols: Optional[List[str]] = None,
 ) -> str:
-    """Prompt Gemini to generate schema-aware, read-only DuckDB SQL tailored to intent."""
+    """Prompt LLM Router to generate schema-aware, read-only DuckDB SQL tailored to intent."""
     schema_lines = [f'- "{col}": {dtype}' for col, dtype in columns_with_types.items()]
     schema_desc = "\n".join(schema_lines)
 
@@ -269,6 +284,8 @@ async def _generate_sql_with_gemini(
         extra_roles += f"- Target Entities: {target_entities}\n"
     if units_col:
         extra_roles += f"- Units / Volume Column: \"{units_col}\"\n"
+    if expense_cols:
+        extra_roles += f"- Operating/Marketing Expense Columns: {expense_cols}\n"
 
     seg_guideline = f"   - SEGMENT_BREAKDOWN: Group by \"{dimension_col}\" AS segment, compute total revenue, COGS, gross margin %, and revenue share.\n"
     if target_entities:
@@ -276,6 +293,8 @@ async def _generate_sql_with_gemini(
         seg_guideline += f"     MANDATORY: Filter specifically for requested entities: WHERE \"{dimension_col}\" IN ({ent_str})\n"
     if units_col:
         seg_guideline += f"     MANDATORY: Include units volume: COALESCE(SUM(try_cast(\"{units_col}\" AS DOUBLE)), 0) AS units_sold\n"
+
+    exp_example = (" - " + " - ".join([f'SUM("{c}")' for c in expense_cols])) if expense_cols else ""
 
     prompt = (
         f"You are Agent Q, the MI6 expert financial forensics SQL agent.\n"
@@ -303,24 +322,26 @@ async def _generate_sql_with_gemini(
         f"   - TREND_GROWTH: Aggregate revenue chronologically across periods. For example:\n"
         f"     WITH period_summary AS (SELECT concat(strftime(try_cast(\"{period_col}\" AS DATE), '%Y-Q'), quarter(try_cast(\"{period_col}\" AS DATE))) AS period, SUM(\"{revenue_col}\") AS revenue, SUM(\"{cogs_col}\") AS cogs FROM \"{table_name}\" WHERE try_cast(\"{period_col}\" AS DATE) IS NOT NULL GROUP BY 1 ORDER BY 1) "
         f"     SELECT period, revenue, cogs, ROUND(((revenue - LAG(revenue) OVER (ORDER BY period ASC)) / NULLIF(LAG(revenue) OVER (ORDER BY period ASC), 0)) * 100, 2) AS revenue_growth_pct, ROUND(((revenue - cogs) / NULLIF(revenue, 0)) * 100, 2) AS gross_margin_pct FROM period_summary;\n"
-        f"   - ANOMALY_INVESTIGATION: Group by \"{dimension_col}\" AS region, compute q1_revenue, q2_revenue, revenue_delta_pct, q1_cogs, q2_cogs, cogs_delta_pct, q1_gm_pct, q2_gm_pct, gm_variance_bps using period conditions:\n"
-        f"     Q1 condition: {q1_cond}\n"
-        f"     Q2 condition: {q2_cond}\n"
-        f"   - PROFITABILITY_FORECAST: Aggregate period revenue, COGS, gross profit, gross margin %, and period growth/run-rates across reporting periods (e.g. by quarter: concat(strftime(try_cast(\"{period_col}\" AS DATE), '%Y-Q'), quarter(try_cast(\"{period_col}\" AS DATE))) or by month) to project forward annual revenue and margins for next year.\n"
+        f"   - ANOMALY_INVESTIGATION:\n"
+        f"     * For profit/loss inquiries (e.g. 'is there any loss in my business', 'net loss', 'profitability check'): Calculate overall total_revenue, total_cogs, other expense columns (e.g. Marketing, Operating Expenses), and compute (total_revenue - total_costs) AS net_profit_loss across the entire dataset table.\n"
+        f"       For example: SELECT SUM(\"{revenue_col}\") AS total_revenue, SUM(\"{cogs_col}\") AS total_cogs, (SUM(\"{revenue_col}\") - SUM(\"{cogs_col}\"){exp_example}) AS net_profit_loss FROM \"{table_name}\";\n"
+        f"     * For margin drop / regional anomaly inquiries (e.g. 'why did gross margin drop in Q2'): Group by \"{dimension_col}\" AS region, compute q1_revenue, q2_revenue, revenue_delta_pct, q1_cogs, q2_cogs, cogs_delta_pct, q1_gm_pct, q2_gm_pct, gm_variance_bps using period conditions:\n"
+        f"       Q1 condition: {q1_cond}\n"
+        f"       Q2 condition: {q2_cond}\n"
+        f"   - PROFITABILITY_FORECAST: Return chronological time-series rows grouped by period (e.g., SELECT concat(strftime(try_cast(\"{period_col}\" AS DATE), '%Y-Q'), quarter(try_cast(\"{period_col}\" AS DATE))) AS period, SUM(\"{revenue_col}\") AS revenue, SUM(\"{cogs_col}\") AS cogs, (SUM(\"{revenue_col}\") - SUM(\"{cogs_col}\")) AS gross_profit, ROUND(((SUM(\"{revenue_col}\") - SUM(\"{cogs_col}\")) / NULLIF(SUM(\"{revenue_col}\"), 0)) * 100, 2) AS gross_margin_pct FROM \"{table_name}\" WHERE try_cast(\"{period_col}\" AS DATE) IS NOT NULL GROUP BY 1 ORDER BY 1). Do NOT collapse all periods into a single aggregate forecast row.\n"
         f"{seg_guideline}"
         f"   - GENERAL_INQUIRY: Write a relevant aggregation query answering the user's inquiry.\n\n"
         f"Return ONLY the raw executable SQL query string, with no markdown, backticks, or comments."
     )
 
-    response = client.models.generate_content(
-        model=get_settings().GEMINI_MODEL,
-        contents=prompt,
+    response_text = await route_completion(
+        prompt=prompt,
+        temperature=0.1,
     )
-    return _sanitize_sql(response.text)
+    return _sanitize_sql(response_text)
 
 
-async def _heal_sql_with_gemini(
-    client: Any,
+async def _heal_sql_with_llm(
     error_msg: str,
     failed_sql: str,
     table_name: str,
@@ -328,7 +349,7 @@ async def _heal_sql_with_gemini(
     intent: str,
     sql_objective: str,
 ) -> str:
-    """Prompt Gemini to heal a failed or blocked SQL query."""
+    """Prompt LLM Router to heal a failed or blocked SQL query."""
     schema_lines = [f'- "{col}": {dtype}' for col, dtype in columns_with_types.items()]
     schema_desc = "\n".join(schema_lines)
     table_cols = list(columns_with_types.keys())
@@ -347,11 +368,11 @@ async def _heal_sql_with_gemini(
         f"2. Use ONLY column names that exist in Exact Available Table Columns: {table_cols}. Wrap in double quotes.\n"
         f"3. In DuckDB, strftime does NOT support '%q' for quarters. To format quarters, use: concat(strftime(try_cast(col AS DATE), '%Y-Q'), quarter(try_cast(col AS DATE)))."
     )
-    response = client.models.generate_content(
-        model=get_settings().GEMINI_MODEL,
-        contents=prompt,
+    response_text = await route_completion(
+        prompt=prompt,
+        temperature=0.1,
     )
-    return _sanitize_sql(response.text)
+    return _sanitize_sql(response_text)
 
 
 async def run_agent_q(
@@ -552,17 +573,14 @@ async def run_agent_q(
         q1_cond = f'"{period_col}" = \'{p1}\''
         q2_cond = f'"{period_col}" = \'{p2}\''
 
-    # 2. Generate Initial SQL (Attempt Gemini or build deterministic query)
+    # 2. Generate Initial SQL (Attempt LLM Router or build deterministic query)
     current_sql: Optional[str] = None
-    gen_client = None
+    llm_enabled = bool((settings.GEMINI_API_KEY and settings.GEMINI_API_KEY != "your_gemini_api_key_here") or settings.GROQ_API_KEY)
     quota_exceeded = bool(m_plan and m_plan.get("quota_exceeded"))
 
-    if not quota_exceeded and settings.GEMINI_API_KEY and settings.GEMINI_API_KEY != "your_gemini_api_key_here":
+    if not quota_exceeded and llm_enabled:
         try:
-            from google import genai
-            gen_client = genai.Client(api_key=settings.GEMINI_API_KEY)
-            current_sql = await _generate_sql_with_gemini(
-                client=gen_client,
+            current_sql = await _generate_sql_with_llm(
                 query=query,
                 intent=intent,
                 sql_objective=sql_objective,
@@ -578,15 +596,15 @@ async def run_agent_q(
                 target_entities=target_entities,
                 units_col=units_col,
             )
-            logger.info("Agent Q generated dynamic SQL via Gemini for intent '%s'", intent)
+            logger.info("Agent Q generated dynamic SQL via LiteLLM Router for intent '%s'", intent)
         except Exception as e:
             err_str = str(e)
             if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
                 quota_exceeded = True
-                gen_client = None
-                logger.warning("Gemini Q quota exceeded (429), switching to deterministic SQL: %s", e)
+                llm_enabled = False
+                logger.warning("LLM Router Q quota exceeded (429), switching to deterministic SQL: %s", e)
             else:
-                logger.warning("Gemini initial SQL generation failed: %s", e)
+                logger.warning("LLM Router initial SQL generation failed: %s", e)
 
     if not current_sql:
         current_sql = _build_deterministic_sql(
@@ -621,10 +639,9 @@ async def run_agent_q(
                 current_sql,
             )
 
-            if attempt < 2 and gen_client is not None and not quota_exceeded:
+            if attempt < 2 and llm_enabled and not quota_exceeded:
                 try:
-                    current_sql = await _heal_sql_with_gemini(
-                        client=gen_client,
+                    current_sql = await _heal_sql_with_llm(
                         error_msg=sec_error,
                         failed_sql=current_sql,
                         table_name=table_name,
@@ -637,8 +654,8 @@ async def run_agent_q(
                     err_str = str(g_err)
                     if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
                         quota_exceeded = True
-                        gen_client = None
-                    logger.warning("Gemini security self-heal failed: %s", g_err)
+                        llm_enabled = False
+                    logger.warning("LLM Router security self-heal failed: %s", g_err)
 
             # Fallback to safe deterministic query
             current_sql = _build_deterministic_sql(
@@ -671,10 +688,9 @@ async def run_agent_q(
                 current_sql,
             )
 
-            if attempt < 2 and gen_client is not None and not quota_exceeded:
+            if attempt < 2 and llm_enabled and not quota_exceeded:
                 try:
-                    current_sql = await _heal_sql_with_gemini(
-                        client=gen_client,
+                    current_sql = await _heal_sql_with_llm(
                         error_msg=execution_error,
                         failed_sql=current_sql,
                         table_name=table_name,
@@ -687,8 +703,8 @@ async def run_agent_q(
                     err_str = str(g_err)
                     if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
                         quota_exceeded = True
-                        gen_client = None
-                    logger.warning("Gemini SQL self-heal failed: %s", g_err)
+                        llm_enabled = False
+                    logger.warning("LLM Router SQL self-heal failed: %s", g_err)
 
             current_sql = _repair_sql(current_sql, execution_error, table_name, table_columns)
             if attempt == 1:
@@ -759,11 +775,11 @@ async def run_agent_q(
         curr_symbol = "£"
 
     # Default anomaly values
-    anomaly_region = "South"
-    expected_vol = 433000
-    actual_billed = 525000
-    variance_bps = -1193
-    discrepancy_pct = 21.25
+    anomaly_region = "Normal Operations"
+    expected_vol = 0.0
+    actual_billed = 0.0
+    variance_bps = 0
+    discrepancy_pct = 0.0
 
     drill_id: Optional[str] = None
     drill_cogs: Optional[float] = None
@@ -771,10 +787,86 @@ async def run_agent_q(
     drill_product: Optional[str] = None
 
     # 6. Intent-Specific Diagnostic Analysis & Anomaly Extraction
+    def _extract_metric(r: Dict[str, Any], candidates: List[str]) -> float:
+        for cand in candidates:
+            if cand in r and r[cand] is not None:
+                try:
+                    return float(r[cand])
+                except (ValueError, TypeError):
+                    pass
+        for rk, rv in r.items():
+            for cand in candidates:
+                if cand in rk.lower() and rv is not None:
+                    try:
+                        return float(rv)
+                    except (ValueError, TypeError):
+                        pass
+        return 0.0
+
+    def _extract_period(r: Dict[str, Any]) -> str:
+        # First priority: explicit well-known period/date columns
+        for k in ["period", "quarter", "month", "date", "reporting_period", "fiscal_period", "time_period"]:
+            if k in r and r[k] is not None:
+                val = str(r[k]).strip()
+                if val:
+                    return val
+
+        # Second priority: look for key matching period/date/quarter/month (excluding metric words)
+        metric_words = {"revenue", "cogs", "profit", "margin", "cost", "sold", "units", "sales", "expense", "opex", "amount", "total", "sum", "avg", "projected", "forecast", "delta", "pct", "bps"}
+        for rk, rv in r.items():
+            rk_lower = rk.lower()
+            if any(mw in rk_lower for mw in metric_words):
+                continue
+            if any(term in rk_lower for term in ["period", "quarter", "month", "date", "interval"]):
+                if rv is not None:
+                    val = str(rv).strip()
+                    if val and not val.endswith(".0"):
+                        return val
+                    elif val:
+                        try:
+                            f_val = float(val)
+                            # If it's a 4-digit year like 2026.0
+                            if 1900 <= f_val <= 2100 and f_val == int(f_val):
+                                return str(int(f_val))
+                        except ValueError:
+                            return val
+
+        # Third priority: check for clean 4-digit year or formatted quarter/date in any string value
+        for rk, rv in r.items():
+            rk_lower = rk.lower()
+            if any(mw in rk_lower for mw in metric_words):
+                continue
+            if isinstance(rv, str):
+                s = rv.strip()
+                # Check for standard period pattern like '2026-Q1', '2026-03', 'Q1-2026', '2026-06-12'
+                if re.match(r"^\d{4}[-/](?:Q[1-4]|\d{1,2}(?:[-/]\d{1,2})?)$", s, re.IGNORECASE):
+                    return s
+                if re.match(r"^Q[1-4](?:[-/]\d{2,4})?$", s, re.IGNORECASE):
+                    return s
+
+        return "Historical Interval"
+
+    has_pl_columns = any(
+        c in table_headers
+        for c in ["net_profit", "net_profit_loss", "net_loss", "profit_loss", "net_income", "total_net_profit"]
+    )
+    is_pl_query = (
+        has_pl_columns
+        or any(
+            w in query.lower()
+            for w in [
+                "loss", "losses", "profitable", "profit or loss", "net profit", "net loss",
+                "making profit", "make profit", "incur loss", "any loss"
+            ]
+        )
+    )
+
     is_trend_query = intent == "TREND_GROWTH" or (
         intent not in ("PROFITABILITY_FORECAST", "SEGMENT_BREAKDOWN", "GENERAL_INQUIRY")
-        and "period" in table_headers
-        and "revenue" in table_headers
+        and not is_pl_query
+        and len(rows) >= 2
+        and any("period" in h.lower() or "date" in h.lower() or "month" in h.lower() for h in table_headers)
+        and any("revenue" in h.lower() or "sales" in h.lower() for h in table_headers)
         and "gm_variance_bps" not in table_headers
     )
 
@@ -782,26 +874,26 @@ async def run_agent_q(
         if len(rows) >= 2:
             first_row = rows[0]
             last_row = rows[-1]
-            first_period = str(first_row.get("period", "Initial"))
-            last_period = str(last_row.get("period", "Latest"))
-            first_rev = float(first_row.get("revenue") or 0)
-            last_rev = float(last_row.get("revenue") or 0)
+            first_period = _extract_period(first_row)
+            last_period = _extract_period(last_row)
+            first_rev = _extract_metric(first_row, ["revenue", "total_revenue", "revenue_inr", "sales"])
+            last_rev = _extract_metric(last_row, ["revenue", "total_revenue", "revenue_inr", "sales"])
 
             total_delta = last_rev - first_rev
             total_growth_pct = round(((total_delta) / first_rev) * 100, 2) if first_rev > 0 else 0.0
             direction = "growing" if total_delta > 0 else ("dropping" if total_delta < 0 else "stable")
 
-            rev_sorted = sorted(rows, key=lambda r: float(r.get("revenue") or 0))
+            rev_sorted = sorted(rows, key=lambda r: _extract_metric(r, ["revenue", "total_revenue", "revenue_inr", "sales"]))
             min_rev_row = rev_sorted[0]
             max_rev_row = rev_sorted[-1]
             avg_gm = (
-                sum(float(r.get("gross_margin_pct") or 0) for r in rows) / len(rows)
+                sum(_extract_metric(r, ["gross_margin_pct", "gm_pct"]) for r in rows) / len(rows)
                 if rows else 0.0
             )
 
             summary_findings = [
                 f"Revenue is {direction}: Shifted from {curr_symbol}{first_rev:,.0f} ({first_period}) to {curr_symbol}{last_rev:,.0f} ({last_period}), reflecting a {total_growth_pct:+.2f}% total trajectory.",
-                f"Peak revenue achieved in {max_rev_row.get('period')} at {curr_symbol}{float(max_rev_row.get('revenue') or 0):,.0f}; trough recorded in {min_rev_row.get('period')} at {curr_symbol}{float(min_rev_row.get('revenue') or 0):,.0f}.",
+                f"Peak revenue achieved in {_extract_period(max_rev_row)} at {curr_symbol}{_extract_metric(max_rev_row, ['revenue', 'total_revenue', 'revenue_inr', 'sales']):,.0f}; trough recorded in {_extract_period(min_rev_row)} at {curr_symbol}{_extract_metric(min_rev_row, ['revenue', 'total_revenue', 'revenue_inr', 'sales']):,.0f}.",
                 f"Chronological trajectory tracked across {len(rows)} reporting periods with average margin of {avg_gm:.2f}%.",
             ]
             anomalies_detected = [
@@ -828,7 +920,7 @@ async def run_agent_q(
                 "currencySymbol": curr_symbol,
             }
         else:
-            first_val = float(rows[0].get("revenue") or 0) if rows else 0.0
+            first_val = _extract_metric(rows[0], ["revenue", "total_revenue", "revenue_inr", "sales"]) if rows else 0.0
             summary_findings = [
                 f"Revenue trajectory ledger loaded across {len(rows)} reporting period(s).",
                 f"Top-line revenue recorded at {curr_symbol}{first_val:,.0f}." if rows else "No revenue transactions recorded for the evaluated interval.",
@@ -849,10 +941,10 @@ async def run_agent_q(
             }
 
     elif intent == "PROFITABILITY_FORECAST":
-        rev_vals = [float(r.get("revenue") or 0) for r in rows]
-        cogs_vals = [float(r.get("cogs") or 0) for r in rows]
+        rev_vals = [_extract_metric(r, ["revenue", "total_revenue", "revenue_inr", "sales"]) for r in rows]
+        cogs_vals = [_extract_metric(r, ["cogs", "total_cogs", "cogs_inr", "cost"]) for r in rows]
         gp_vals = [
-            float(r.get("gross_profit") if r.get("gross_profit") is not None else (rev_vals[i] - cogs_vals[i]))
+            _extract_metric(r, ["gross_profit"]) or (rev_vals[i] - cogs_vals[i])
             for i, r in enumerate(rows)
         ]
         total_rev = sum(rev_vals)
@@ -860,8 +952,32 @@ async def run_agent_q(
         avg_gm_pct = (total_gp / total_rev * 100.0) if total_rev > 0 else 0.0
 
         n = len(rows)
-        first_period = str(rows[0].get("period", "Q1")) if rows else "Historical"
-        last_period = str(rows[-1].get("period", "Q2")) if rows else "Current"
+        first_period = _extract_period(rows[0]) if rows else "Historical"
+        last_period = _extract_period(rows[-1]) if rows else "Current"
+
+        # Check for precomputed LLM forecast metrics
+        precomputed_rev = None
+        precomputed_growth = None
+        precomputed_gp = None
+        if rows:
+            r0 = rows[0]
+            for k in ["projected_next_year_revenue", "projected_revenue", "forecast_revenue", "projected_annual_revenue", "forecasted_revenue"]:
+                v = _extract_metric(r0, [k])
+                if v > 0:
+                    precomputed_rev = v
+                    break
+            for k in ["avg_qoq_growth_rate", "growth_rate", "projected_growth_pct", "growth_pct", "qoq_growth"]:
+                if k in r0 and r0[k] is not None:
+                    try:
+                        precomputed_growth = float(r0[k])
+                        break
+                    except (ValueError, TypeError):
+                        pass
+            for k in ["projected_gross_profit", "forecast_gross_profit", "projected_gp"]:
+                v = _extract_metric(r0, [k])
+                if v > 0:
+                    precomputed_gp = v
+                    break
 
         # Determine frequency (quarterly = 4, monthly = 12)
         periods_per_year = 4
@@ -870,7 +986,7 @@ async def run_agent_q(
         elif n > 4:
             periods_per_year = 12
 
-        # Linear trend extrapolation
+        # Linear trend extrapolation or precomputed fallback
         if n >= 2:
             x_vals = list(range(n))
             x_mean = (n - 1) / 2.0
@@ -894,20 +1010,45 @@ async def run_agent_q(
             pop_growth = round(
                 ((rev_vals[-1] - rev_vals[-2]) / rev_vals[-2]) * 100.0, 2
             ) if rev_vals[-2] > 0 else 0.0
+
+            if precomputed_rev is not None:
+                projected_rev_annual = round(precomputed_rev, 0)
+            if precomputed_growth is not None:
+                proj_growth_pct = round(precomputed_growth, 2)
+            if precomputed_gp is not None:
+                projected_gp_annual = round(precomputed_gp, 0)
+            else:
+                projected_gp_annual = round(projected_rev_annual * (avg_gm_pct / 100.0), 0)
         else:
             single_val = rev_vals[0] if rev_vals else 0.0
             annualized_baseline = round(single_val * periods_per_year, 0)
-            projected_rev_annual = annualized_baseline
-            proj_growth_pct = 0.0
-            pop_growth = 0.0
-            slope = 0.0
+            if precomputed_rev is not None:
+                projected_rev_annual = round(precomputed_rev, 0)
+                proj_growth_pct = round(precomputed_growth, 2) if precomputed_growth is not None else (
+                    round(((projected_rev_annual - annualized_baseline) / annualized_baseline) * 100.0, 2)
+                    if annualized_baseline > 0 else 0.0
+                )
+                pop_growth = proj_growth_pct
+                projected_gp_annual = round(precomputed_gp, 0) if precomputed_gp is not None else round(projected_rev_annual * (avg_gm_pct / 100.0), 0)
+            else:
+                projected_rev_annual = annualized_baseline
+                proj_growth_pct = 0.0
+                pop_growth = 0.0
+                slope = 0.0
+                projected_gp_annual = round(projected_rev_annual * (avg_gm_pct / 100.0), 0)
 
-        projected_gp_annual = round(projected_rev_annual * (avg_gm_pct / 100.0), 0)
+        baseline_desc = (
+            f"Historical Baseline: Extrapolated from {n} observed reporting period(s) ({first_period} to {last_period}) with latest period revenue of {curr_symbol}{rev_vals[-1]:,.0f} (velocity: {pop_growth:+.2f}%)."
+            if n >= 2
+            else f"Historical Baseline: Extrapolated from single reporting period ({first_period}) with baseline revenue of {curr_symbol}{rev_vals[0]:,.0f}."
+            if rev_vals
+            else "Historical Baseline: Initial operational dataset baseline."
+        )
 
         summary_findings = [
             f"[PROJECTION ESTIMATE] Expected annual revenue next year is projected at {curr_symbol}{projected_rev_annual:,.0f} ({proj_growth_pct:+.2f}% vs annualized baseline of {curr_symbol}{annualized_baseline:,.0f}).",
             f"[PROJECTION ESTIMATE] Expected gross profit next year is projected at {curr_symbol}{projected_gp_annual:,.0f} based on sustained {avg_gm_pct:.2f}% gross margin discipline.",
-            f"Historical Baseline: Extrapolated from {n} observed reporting period(s) ({first_period} to {last_period}) with latest period revenue of {curr_symbol}{rev_vals[-1]:,.0f} (velocity: {pop_growth:+.2f}%).",
+            baseline_desc,
             "Projection Methodology: Linear econometric trend extrapolation from historical period-over-period data. This is an analytical estimate subject to pipeline execution and macroeconomic conditions.",
         ]
         anomalies_detected = [
@@ -957,24 +1098,43 @@ async def run_agent_q(
                     row_a = ent_map[name_0.lower()]
                     row_b = ent_map[name_1.lower()]
 
-            name_a = str(row_a.get(seg_col) or row_a.get("segment") or "Entity A")
-            name_b = str(row_b.get(seg_col) or row_b.get("segment") or "Entity B")
-            rev_a = float(row_a.get("revenue") or 0)
-            rev_b = float(row_b.get("revenue") or 0)
-            cogs_a = float(row_a.get("cogs") or 0)
-            cogs_b = float(row_b.get("cogs") or 0)
-            gp_a = float(row_a.get("gross_profit") if row_a.get("gross_profit") is not None else (rev_a - cogs_a))
-            gp_b = float(row_b.get("gross_profit") if row_b.get("gross_profit") is not None else (rev_b - cogs_b))
-            gm_a = float(row_a.get("gross_margin_pct") or 0)
-            gm_b = float(row_b.get("gross_margin_pct") or 0)
-            units_a = float(row_a.get("units_sold") or 0)
-            units_b = float(row_b.get("units_sold") or 0)
+            def _extract_metric(r: Dict[str, Any], candidates: List[str]) -> float:
+                for cand in candidates:
+                    if cand in r and r[cand] is not None:
+                        try:
+                            return float(r[cand])
+                        except (ValueError, TypeError):
+                            pass
+                for rk, rv in r.items():
+                    for cand in candidates:
+                        if cand in rk.lower() and rv is not None:
+                            try:
+                                return float(rv)
+                            except (ValueError, TypeError):
+                                pass
+                return 0.0
+
+            name_a = str(row_a.get(seg_col) or row_a.get("segment") or row_a.get("product") or "Entity A")
+            name_b = str(row_b.get(seg_col) or row_b.get("segment") or row_b.get("product") or "Entity B")
+            rev_a = _extract_metric(row_a, ["revenue", "total_revenue", "revenue_inr", "sales"])
+            rev_b = _extract_metric(row_b, ["revenue", "total_revenue", "revenue_inr", "sales"])
+            cogs_a = _extract_metric(row_a, ["cogs", "total_cogs", "cogs_inr", "cost"])
+            cogs_b = _extract_metric(row_b, ["cogs", "total_cogs", "cogs_inr", "cost"])
+            gp_a = _extract_metric(row_a, ["gross_profit"]) or (rev_a - cogs_a)
+            gp_b = _extract_metric(row_b, ["gross_profit"]) or (rev_b - cogs_b)
+            gm_a = _extract_metric(row_a, ["gross_margin_pct", "gm_pct"]) or (((gp_a / rev_a) * 100) if rev_a > 0 else 0.0)
+            gm_b = _extract_metric(row_b, ["gross_margin_pct", "gm_pct"]) or (((gp_b / rev_b) * 100) if rev_b > 0 else 0.0)
+            units_a = _extract_metric(row_a, ["units_sold", "units", "volume"])
+            units_b = _extract_metric(row_b, ["units_sold", "units", "volume"])
 
             rev_diff = rev_a - rev_b
             rev_lead = name_a if rev_a >= rev_b else name_b
             rev_delta_pct = round(((rev_a - rev_b) / rev_b * 100.0), 2) if rev_b > 0 else 0.0
             price_a = (rev_a / units_a) if units_a > 0 else 0.0
             price_b = (rev_b / units_b) if units_b > 0 else 0.0
+            total_rev = rev_a + rev_b
+            share_a = round((rev_a / total_rev) * 100.0, 1) if total_rev > 0 else 50.0
+            share_b = round((rev_b / total_rev) * 100.0, 1) if total_rev > 0 else 50.0
 
             summary_findings = [
                 f"Revenue Comparison: '{name_a}' generated {curr_symbol}{rev_a:,.0f} vs '{name_b}' at {curr_symbol}{rev_b:,.0f} (top-line delta of {curr_symbol}{abs(rev_diff):,.0f} favoring {rev_lead}).",
@@ -985,7 +1145,7 @@ async def run_agent_q(
                 )
             summary_findings.extend([
                 f"Gross Profit & Margins: '{name_a}' delivered {curr_symbol}{gp_a:,.0f} ({gm_a:.1f}% GM) vs '{name_b}' with {curr_symbol}{gp_b:,.0f} ({gm_b:.1f}% GM) ({int((gm_a - gm_b)*100):+,} bps margin spread).",
-                f"Consolidated top-line across both entities totaled {curr_symbol}{(rev_a + rev_b):,.0f} with {name_a} representing {(rev_a/(rev_a+rev_b)*100):.1f}% and {name_b} representing {(rev_b/(rev_a+rev_b)*100):.1f}%.",
+                f"Consolidated top-line across both entities totaled {curr_symbol}{total_rev:,.0f} with {name_a} representing {share_a:.1f}% and {name_b} representing {share_b:.1f}%.",
             ])
 
             anomalies_detected = [
@@ -1072,117 +1232,249 @@ async def run_agent_q(
         }
 
     else:
-        # ANOMALY_INVESTIGATION with regional variance calculation
-        valid_rows = []
-        for r in rows:
-            q1_rev = float(r.get("q1_revenue") or 0)
-            q2_rev = float(r.get("q2_revenue") or 0)
-            q1_c = float(r.get("q1_cogs") or 0)
-            q2_c = float(r.get("q2_cogs") or 0)
-            var_bps = r.get("gm_variance_bps")
-            if (q1_rev > 0 or q2_rev > 0 or q1_c > 0 or q2_c > 0) and var_bps is not None:
-                valid_rows.append(r)
+        # Check if query calculated net profit / loss or overall financial aggregates
+        pl_row = rows[0] if rows else {}
+        net_profit_val = None
+        for k in ["net_profit_loss", "net_profit", "net_income", "profit_loss", "net_loss", "total_net_profit", "total_profit"]:
+            if k in pl_row and pl_row[k] is not None:
+                try:
+                    net_profit_val = float(pl_row[k])
+                    break
+                except (ValueError, TypeError):
+                    pass
 
-        if valid_rows and "gm_variance_bps" in table_headers:
-            worst_row = sorted(
-                valid_rows,
-                key=lambda r: float(r.get("gm_variance_bps") if r.get("gm_variance_bps") is not None else 0)
-            )[0]
+        # If not explicitly named, check if we have revenue and cost aggregates
+        tot_rev = _extract_metric(pl_row, ["total_revenue", "revenue", "revenue_inr", "sales"])
+        tot_cogs = _extract_metric(pl_row, ["total_cogs", "cogs", "cogs_inr", "cost"])
+        tot_opex = _extract_metric(pl_row, ["operating_expenses", "opex", "operating_expenses_inr"])
+        tot_mkt = _extract_metric(pl_row, ["marketing", "marketing_inr", "mkt"])
+        tot_costs = tot_cogs + tot_opex + tot_mkt
 
-            anomaly_region = str(worst_row.get("region") or worst_row.get(dimension_col) or "Outlier Region")
-            variance_bps = int(float(worst_row.get("gm_variance_bps") or 0))
-            q1_c = float(worst_row.get("q1_cogs") or 0)
-            q2_c = float(worst_row.get("q2_cogs") or 0)
-            rev_delta = float(worst_row.get("revenue_delta_pct") or 0)
+        if net_profit_val is None and (tot_rev > 0 and (tot_cogs > 0 or tot_costs > 0)) and (is_pl_query or (tot_opex > 0 or tot_mkt > 0)):
+            net_profit_val = tot_rev - tot_costs
 
-            actual_billed = q2_c
-            expected_vol = round(q1_c * (1.0 + (rev_delta / 100.0)), 2)
-            if expected_vol > 0:
-                discrepancy_pct = round(((actual_billed - expected_vol) / expected_vol) * 100.0, 2)
+        if is_pl_query and net_profit_val is not None:
+            net_margin_pct = round((net_profit_val / tot_rev * 100.0), 2) if tot_rev > 0 else 0.0
+            resp_style = m_plan.get("response_style") or "EXPLORATORY_DETAILED"
+            if net_profit_val >= 0:
+                cost_details = []
+                if tot_cogs > 0:
+                    cost_details.append(f"COGS: {format_currency_human(tot_cogs, curr_symbol)}")
+                if tot_opex > 0:
+                    cost_details.append(f"Operating Expenses: {format_currency_human(tot_opex, curr_symbol)}")
+                if tot_mkt > 0:
+                    cost_details.append(f"Marketing: {format_currency_human(tot_mkt, curr_symbol)}")
+                cost_summary_str = f" ({', '.join(cost_details)})" if cost_details else ""
+
+                if resp_style == "DIRECT_BINARY":
+                    summary_findings = [
+                        f"No. The business generated a net profit of {format_currency_human(net_profit_val, curr_symbol)} across the evaluated period.",
+                        f"Top-line revenue reached {format_currency_human(tot_rev, curr_symbol)} against consolidated expenses of {format_currency_human(tot_costs, curr_symbol)}{cost_summary_str} (net margin: {net_margin_pct:.2f}%).",
+                        "Zero net financial loss detected across all operating divisions.",
+                    ]
+                    narrative = (
+                        f"No. The company is profitable with a net profit of {format_currency_human(net_profit_val, curr_symbol)} in the evaluated period. "
+                        f"Revenue reached {format_currency_human(tot_rev, curr_symbol)} against total expenses of {format_currency_human(tot_costs, curr_symbol)} "
+                        f"(net operating margin: {net_margin_pct:.2f}%)."
+                    )
+                else:
+                    summary_findings = [
+                        f"Business is profitable overall. Total net profit recorded at {format_currency_human(net_profit_val, curr_symbol)} across the evaluated period.",
+                        f"Top-line revenue totaled {format_currency_human(tot_rev, curr_symbol)} against consolidated costs of {format_currency_human(tot_costs, curr_symbol)}{cost_summary_str} (net margin: {net_margin_pct:.2f}%).",
+                        "Operational health check confirms positive operating leverage with no enterprise-level net loss.",
+                    ]
+                    narrative = (
+                        f"Comprehensive financial audit confirms the business is profitable overall. "
+                        f"Total net profit stands at {format_currency_human(net_profit_val, curr_symbol)} on consolidated revenue of {format_currency_human(tot_rev, curr_symbol)} "
+                        f"(delivering a {net_margin_pct:.2f}% net profit margin). Aggregate operational costs totaled {format_currency_human(tot_costs, curr_symbol)}, "
+                        f"demonstrating healthy solvency and positive cash generation."
+                    )
+                anomalies_detected = []
+                anomaly_data = {
+                    "region": "All Operations",
+                    "expectedVolume": tot_rev,
+                    "actualBilled": tot_costs,
+                    "varianceBps": int(net_margin_pct * 100),
+                    "discrepancyPct": round((net_profit_val / tot_rev) * 100, 2) if tot_rev > 0 else 0.0,
+                    "netProfitLoss": net_profit_val,
+                    "currencySymbol": curr_symbol,
+                }
             else:
-                discrepancy_pct = round(float(worst_row.get("cogs_delta_pct") or 0), 2)
-
-            # Transaction-level drilldown to isolate specific invoice root cause
-            try:
-                id_cols = [c for c in table_columns if ID_PATTERN.search(c)]
-                drill_sql = f"""
-                    SELECT *
-                    FROM "{table_name}"
-                    WHERE "{dimension_col}" = '{anomaly_region}'
-                      AND ({q2_cond})
-                    ORDER BY "{cogs_col}" DESC
-                    LIMIT 1;
-                """
-                drill_df = query_dataset(table_name, drill_sql)
-                if len(drill_df) > 0:
-                    drill_row = drill_df.to_dicts()[0]
-                    if id_cols and id_cols[0] in drill_row:
-                        drill_id = str(drill_row.get(id_cols[0]))
-                    drill_cogs = float(drill_row.get(cogs_col) or 0)
-                    drill_date = str(drill_row.get(period_col) or "")
-                    for p_cand in ["Product", "product", "item", "Item", "Category", "category"]:
-                        if p_cand in drill_row:
-                            drill_product = str(drill_row.get(p_cand))
-                            break
-            except Exception as e:
-                logger.warning("Agent Q transaction drilldown failed: %s", e)
-
-        if drill_id and drill_cogs:
-            summary_findings = [
-                f"Enterprise Gross Margin compressed across periods; primary contraction isolated to '{anomaly_region}' ({variance_bps:+,} bps variance).",
-                f"Transaction-level forensic audit isolates South Q2 invoice '{drill_id}' ({drill_date}) with {curr_symbol}{drill_cogs:,.0f} COGS as the singular root cause driver.",
-                f"Actual COGS in '{anomaly_region}' reached {curr_symbol}{actual_billed:,.0f} vs normalized volume expectation of {curr_symbol}{expected_vol:,.0f} (+{discrepancy_pct:.2f}% unbudgeted burden).",
-            ]
-            anomalies_detected = [
-                {
-                    "field": f"{anomaly_region} COGS ({drill_id})",
-                    "expected": expected_vol,
-                    "actual": actual_billed,
-                    "delta_pct": discrepancy_pct,
-                    "direction": "unfavorable",
-                    "cause": f"Singular transaction outlier '{drill_id}' with {curr_symbol}{drill_cogs:,.0f} COGS on {drill_date}" + (f" ({drill_product})" if drill_product else ""),
+                if resp_style == "DIRECT_BINARY":
+                    summary_findings = [
+                        f"Yes. Net loss of {format_currency_human(abs(net_profit_val), curr_symbol)} detected across operations.",
+                        f"Consolidated expenses of {format_currency_human(tot_costs, curr_symbol)} exceeded top-line revenue of {format_currency_human(tot_rev, curr_symbol)} (net deficit margin: {net_margin_pct:.2f}%).",
+                        "Immediate expense containment required to restore positive operating margin.",
+                    ]
+                    narrative = (
+                        f"Yes. An enterprise net loss of {format_currency_human(abs(net_profit_val), curr_symbol)} was detected. "
+                        f"Total costs of {format_currency_human(tot_costs, curr_symbol)} exceeded revenue of {format_currency_human(tot_rev, curr_symbol)}."
+                    )
+                else:
+                    summary_findings = [
+                        f"Net loss detected. Total net loss recorded at {format_currency_human(abs(net_profit_val), curr_symbol)}.",
+                        f"Consolidated costs of {format_currency_human(tot_costs, curr_symbol)} exceeded top-line revenue of {format_currency_human(tot_rev, curr_symbol)} (net deficit margin: {net_margin_pct:.2f}%).",
+                        "Immediate operational remediation recommended to contain expense creep and restore positive margin leverage.",
+                    ]
+                    narrative = (
+                        f"Financial audit detected an enterprise net loss. "
+                        f"Consolidated expenditures of {format_currency_human(tot_costs, curr_symbol)} exceeded total revenue of {format_currency_human(tot_rev, curr_symbol)}, "
+                        f"generating a net deficit of {format_currency_human(abs(net_profit_val), curr_symbol)} (net margin: {net_margin_pct:.2f}%)."
+                    )
+                anomalies_detected = [
+                    {
+                        "field": "Enterprise Net Deficit",
+                        "expected": tot_rev,
+                        "actual": tot_costs,
+                        "delta_pct": round(((tot_costs - tot_rev) / tot_rev) * 100, 2) if tot_rev > 0 else 0.0,
+                        "direction": "unfavorable",
+                        "cause": f"Consolidated costs exceeded revenue by {format_currency_human(abs(net_profit_val), curr_symbol)}",
+                    }
+                ]
+                anomaly_data = {
+                    "region": "Enterprise Loss",
+                    "expectedVolume": tot_rev,
+                    "actualBilled": tot_costs,
+                    "varianceBps": int(net_margin_pct * 100),
+                    "discrepancyPct": -round((abs(net_profit_val) / tot_rev) * 100, 2) if tot_rev > 0 else 0.0,
+                    "netProfitLoss": net_profit_val,
+                    "currencySymbol": curr_symbol,
                 }
-            ]
-            narrative = (
-                f"Forensic SQL execution on DuckDB table '{table_name}' reveals that {anomaly_region} "
-                f"is the primary driver of consolidated gross margin deterioration, exhibiting a {variance_bps:+,} bps variance. "
-                f"Transaction-level drilldown isolates South Q2 invoice {drill_id} with {curr_symbol}{drill_cogs:,.0f} COGS "
-                f"as the acute root cause driver, generating a +{discrepancy_pct:.2f}% unbudgeted cost burden."
-            )
         else:
-            summary_findings = [
-                f"Enterprise Gross Margin compressed across periods; primary contraction isolated to '{anomaly_region}' ({variance_bps:+,} bps variance).",
-                f"Actual COGS in '{anomaly_region}' reached {curr_symbol}{actual_billed:,.0f} vs normalized volume expectation of {curr_symbol}{expected_vol:,.0f} (+{discrepancy_pct:.2f}% excess burden).",
-                f"Contraction was driven by non-linear logistics and freight surcharges expanding COGS despite top-line trajectory.",
-            ]
-            anomalies_detected = [
-                {
-                    "field": f"{anomaly_region} COGS",
-                    "expected": expected_vol,
-                    "actual": actual_billed,
-                    "delta_pct": discrepancy_pct,
-                    "direction": "unfavorable",
-                    "cause": "Supplier customs escalation fee & unhedged spot logistics surge",
-                }
-            ]
-            narrative = (
-                f"Forensic SQL execution on DuckDB table '{table_name}' reveals that {anomaly_region} "
-                f"is the primary driver of consolidated gross margin deterioration, exhibiting a {variance_bps:+,} bps variance. "
-                f"While baseline territories remained within operational tolerance, {anomaly_region} suffered a "
-                f"+{discrepancy_pct:.2f}% unbudgeted cost burden."
-            )
+            # Regional margin drop / outlier investigation
+            variance_col = None
+            for col_cand in ["gm_variance_bps", "variance_bps", "margin_variance_bps", "gm_delta_bps", "variance"]:
+                if col_cand in table_headers:
+                    variance_col = col_cand
+                    break
 
-        anomaly_data = {
-            "region": anomaly_region,
-            "expectedVolume": expected_vol,
-            "actualBilled": actual_billed,
-            "varianceBps": variance_bps,
-            "discrepancyPct": discrepancy_pct,
-            "outlierTransaction": drill_id,
-            "outlierCogs": drill_cogs,
-            "outlierDate": drill_date,
-            "currencySymbol": curr_symbol,
-        }
+            valid_rows = []
+            for r in rows:
+                q1_rev = _extract_metric(r, ["q1_revenue", "q1_rev", "prev_revenue"])
+                q2_rev = _extract_metric(r, ["q2_revenue", "q2_rev", "curr_revenue"])
+                q1_c = _extract_metric(r, ["q1_cogs", "prev_cogs"])
+                q2_c = _extract_metric(r, ["q2_cogs", "curr_cogs"])
+                var_bps = r.get(variance_col) if variance_col else r.get("gm_variance_bps")
+                if (q1_rev > 0 or q2_rev > 0 or q1_c > 0 or q2_c > 0) and var_bps is not None:
+                    valid_rows.append(r)
+
+            if valid_rows:
+                worst_row = sorted(
+                    valid_rows,
+                    key=lambda r: float(r.get(variance_col) if r.get(variance_col) is not None else (r.get("gm_variance_bps") or 0))
+                )[0]
+
+                anomaly_region = str(worst_row.get("region") or worst_row.get(dimension_col) or "Outlier Region")
+                variance_bps = int(float(worst_row.get(variance_col) if variance_col else (worst_row.get("gm_variance_bps") or 0)))
+                q1_c = float(worst_row.get("q1_cogs") or 0)
+                q2_c = float(worst_row.get("q2_cogs") or 0)
+                rev_delta = float(worst_row.get("revenue_delta_pct") or 0)
+
+                actual_billed = q2_c
+                expected_vol = round(q1_c * (1.0 + (rev_delta / 100.0)), 2)
+                if expected_vol > 0:
+                    discrepancy_pct = round(((actual_billed - expected_vol) / expected_vol) * 100.0, 2)
+                else:
+                    discrepancy_pct = round(float(worst_row.get("cogs_delta_pct") or 0), 2)
+
+                # Transaction-level drilldown to isolate specific invoice root cause
+                try:
+                    id_cols = [c for c in table_columns if ID_PATTERN.search(c)]
+                    drill_sql = f"""
+                        SELECT *
+                        FROM "{table_name}"
+                        WHERE "{dimension_col}" = '{anomaly_region}'
+                          AND ({q2_cond})
+                        ORDER BY "{cogs_col}" DESC
+                        LIMIT 1;
+                    """
+                    drill_df = query_dataset(table_name, drill_sql)
+                    if len(drill_df) > 0:
+                        drill_row = drill_df.to_dicts()[0]
+                        if id_cols and id_cols[0] in drill_row:
+                            drill_id = str(drill_row.get(id_cols[0]))
+                        drill_cogs = float(drill_row.get(cogs_col) or 0)
+                        drill_date = str(drill_row.get(period_col) or "")
+                        for p_cand in ["Product", "product", "item", "Item", "Category", "category"]:
+                            if p_cand in drill_row:
+                                drill_product = str(drill_row.get(p_cand))
+                                break
+                except Exception as e:
+                    logger.warning("Agent Q transaction drilldown failed: %s", e)
+
+                if drill_id and drill_cogs:
+                    summary_findings = [
+                        f"Enterprise Gross Margin compressed across periods; primary contraction isolated to '{anomaly_region}' ({variance_bps:+,} bps variance).",
+                        f"Transaction-level forensic audit isolates South Q2 invoice '{drill_id}' ({drill_date}) with {curr_symbol}{drill_cogs:,.0f} COGS as the singular root cause driver.",
+                        f"Actual COGS in '{anomaly_region}' reached {curr_symbol}{actual_billed:,.0f} vs normalized volume expectation of {curr_symbol}{expected_vol:,.0f} (+{discrepancy_pct:.2f}% unbudgeted burden).",
+                    ]
+                    anomalies_detected = [
+                        {
+                            "field": f"{anomaly_region} COGS ({drill_id})",
+                            "expected": expected_vol,
+                            "actual": actual_billed,
+                            "delta_pct": discrepancy_pct,
+                            "direction": "unfavorable",
+                            "cause": f"Singular transaction outlier '{drill_id}' with {curr_symbol}{drill_cogs:,.0f} COGS on {drill_date}" + (f" ({drill_product})" if drill_product else ""),
+                        }
+                    ]
+                    narrative = (
+                        f"Forensic SQL execution on DuckDB table '{table_name}' reveals that {anomaly_region} "
+                        f"is the primary driver of consolidated gross margin deterioration, exhibiting a {variance_bps:+,} bps variance. "
+                        f"Transaction-level drilldown isolates South Q2 invoice {drill_id} with {curr_symbol}{drill_cogs:,.0f} COGS "
+                        f"as the acute root cause driver, generating a +{discrepancy_pct:.2f}% unbudgeted cost burden."
+                    )
+                else:
+                    summary_findings = [
+                        f"Enterprise Gross Margin compressed across periods; primary contraction isolated to '{anomaly_region}' ({variance_bps:+,} bps variance).",
+                        f"Actual COGS in '{anomaly_region}' reached {curr_symbol}{actual_billed:,.0f} vs normalized volume expectation of {curr_symbol}{expected_vol:,.0f} (+{discrepancy_pct:.2f}% excess burden).",
+                        f"Contraction was driven by non-linear logistics and freight surcharges expanding COGS despite top-line trajectory.",
+                    ]
+                    anomalies_detected = [
+                        {
+                            "field": f"{anomaly_region} COGS",
+                            "expected": expected_vol,
+                            "actual": actual_billed,
+                            "delta_pct": discrepancy_pct,
+                            "direction": "unfavorable",
+                            "cause": "Supplier customs escalation fee & unhedged spot logistics surge",
+                        }
+                    ]
+                    narrative = (
+                        f"Forensic SQL execution on DuckDB table '{table_name}' reveals that {anomaly_region} "
+                        f"is the primary driver of consolidated gross margin deterioration, exhibiting a {variance_bps:+,} bps variance. "
+                        f"While baseline territories remained within operational tolerance, {anomaly_region} suffered a "
+                        f"+{discrepancy_pct:.2f}% unbudgeted cost burden."
+                    )
+
+                anomaly_data = {
+                    "region": anomaly_region,
+                    "expectedVolume": expected_vol,
+                    "actualBilled": actual_billed,
+                    "varianceBps": variance_bps,
+                    "discrepancyPct": discrepancy_pct,
+                    "outlierTransaction": drill_id,
+                    "outlierCogs": drill_cogs,
+                    "outlierDate": drill_date,
+                    "currencySymbol": curr_symbol,
+                }
+            else:
+                # Clean fallback when no regional anomaly or outlier was detected
+                summary_findings = [
+                    f"Diagnostic scan on '{table_name}' completed across {len(rows)} record(s).",
+                    "Operational metrics remain within normal variance boundaries.",
+                    "No severe margin deterioration or transaction anomalies isolated for the specified parameters.",
+                ]
+                anomalies_detected = []
+                narrative = f"Forensic scan on table '{table_name}' detected no acute margin compression anomalies or outlier transactions."
+                anomaly_data = {
+                    "region": "Normal Operations",
+                    "expectedVolume": 0,
+                    "actualBilled": 0,
+                    "varianceBps": 0,
+                    "discrepancyPct": 0.0,
+                    "currencySymbol": curr_symbol,
+                }
 
     if quota_exceeded:
         prefix = "[API Quota Exceeded - Running on deterministic analytical engine]"

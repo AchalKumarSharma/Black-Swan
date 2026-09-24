@@ -29,7 +29,7 @@ export interface ChartSeries {
   [key: string]: string;
 }
 
-export type ChartType = "line" | "bar" | "area" | "waterfall";
+export type ChartType = "line" | "bar" | "area" | "waterfall" | "none";
 
 export interface ChartSpec {
   chart_type: ChartType;
@@ -57,6 +57,12 @@ export interface SensitivityLever {
   [key: string]: any;
 }
 
+export interface ExecutiveBrief {
+  headline?: string;
+  driver?: string;
+  action?: string;
+}
+
 // -----------------------------------------------------------------------------
 // Agent Primary Contracts
 // -----------------------------------------------------------------------------
@@ -67,6 +73,7 @@ export interface M_Plan {
   task_id: string;
   user_query: string;
   intent?: string;
+  response_style?: "DIRECT_BINARY" | "EXPLORATORY_DETAILED";
   hypotheses?: string[];
   required_metrics?: string[];
   sql_objective?: string;
@@ -96,8 +103,10 @@ export interface Eve_Audit {
   };
   formula_ledger: Array<Record<string, string>>;
   assumptions: string[];
+  findings?: string[];
   confidence_score: number; // 0.0 to 1.0
   plain_language_narrative: string;
+  executive_brief?: ExecutiveBrief;
   [key: string]: any;
 }
 
@@ -110,6 +119,8 @@ export interface Agent007_Strategy {
   strategic_actions: string[];
   estimated_impact: string;
   sensitivity_levers: Array<Record<string, any>>;
+  remediation_levers?: Array<Record<string, any>>;
+  executive_brief?: ExecutiveBrief;
   [key: string]: any;
 }
 

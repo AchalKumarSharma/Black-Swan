@@ -1,7 +1,7 @@
 """Configuration settings for Black Swan backend using Pydantic Settings."""
 
 from functools import lru_cache
-from typing import List
+from typing import List, Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -24,8 +24,12 @@ class Settings(BaseSettings):
         default="",
         description="Google Gemini / Antigravity ADK API key",
     )
+    GROQ_API_KEY: Optional[str] = Field(
+        default=None,
+        description="Groq API Key",
+    )
     GEMINI_MODEL: str = Field(
-        default="gemini-2.5-flash",
+        default="gemini-2.0-flash",
         description="Default Gemini model for FP&A agents",
     )
     SUPABASE_URL: str = Field(

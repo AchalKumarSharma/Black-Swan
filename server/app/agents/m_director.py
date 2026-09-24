@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from app.config import get_settings
 from app.core.duckdb import sanitize_table_name
 from app.core.entity_resolver import resolve_query_dimension_and_entities
+from app.core.llm_router import extract_json_payload, route_completion
 
 logger = logging.getLogger("blackswan.agents.m")
 
@@ -69,11 +70,11 @@ def classify_intent_heuristic(
         if "why" in q_lower or "drop" in q_lower or "cause" in q_lower:
             return "ANOMALY_INVESTIGATION"
 
-    # 1. ANOMALY_INVESTIGATION: Specific root cause questions, why questions, drop/spike anomalies
+    # 1. ANOMALY_INVESTIGATION: Specific root cause questions, why questions, drop/spike anomalies, loss inquiries
     if any(k in q_lower for k in [
         "why did", "why has", "why is", "root cause", "culprit", "covenant",
         "anomaly", "spike", "compression", "contraction", "drop in q2", "margin drop",
-        "gross margin drop", "violation", "breach"
+        "gross margin drop", "violation", "breach", "loss", "losses", "any loss", "net loss"
     ]):
         return "ANOMALY_INVESTIGATION"
 
@@ -103,6 +104,48 @@ def classify_intent_heuristic(
 
     # 5. GENERAL_INQUIRY: Factual ledger queries
     return "GENERAL_INQUIRY"
+
+
+def classify_response_style(query: str, intent: str) -> str:
+    """Classify inquiry response style: DIRECT_BINARY vs EXPLORATORY_DETAILED."""
+    q_lower = query.lower().strip()
+
+    # Explicit exploratory/comparative markers
+    exploratory_markers = [
+        "why did", "why has", "why is", "why are", "root cause", "what caused", "cause of",
+        "compare", "comparison", "between", "versus", "vs", "breakdown", "by segment",
+        "by product", "by region", "decompose", "investigate", "deep dive", "explain",
+        "detailed", "walk me through", "driver of", "drivers of", "culprit"
+    ]
+    if any(marker in q_lower for marker in exploratory_markers):
+        return "EXPLORATORY_DETAILED"
+
+    # Explicit binary / single-check verification questions
+    # e.g., "Is there any loss?", "Are sales growing?", "Did we beat target?", "Is our business profitable?"
+    binary_patterns = [
+        r"^(is|are|did|do|does|has|have|can|will|was|were)\b",
+        r"\bis there (any|a)\b",
+        r"\bare there (any)?\b",
+        r"\bany loss(es)?\b",
+        r"\bprofitable\b",
+        r"\bbeat target\b",
+        r"\bon track\b",
+        r"\bgrowing or dropping\b",
+        r"\bgrowing or falling\b",
+        r"\bgrowth or decline\b",
+    ]
+    if any(re.search(pat, q_lower) for pat in binary_patterns):
+        return "DIRECT_BINARY"
+
+    # Intent-based defaults
+    if intent in ("ANOMALY_INVESTIGATION", "SEGMENT_BREAKDOWN"):
+        return "EXPLORATORY_DETAILED"
+    elif intent in ("TREND_GROWTH", "PROFITABILITY_FORECAST"):
+        if any(w in q_lower for w in ["growing or", "dropping or", "higher or", "lower or"]):
+            return "DIRECT_BINARY"
+        return "EXPLORATORY_DETAILED"
+
+    return "DIRECT_BINARY"
 
 
 def get_intent_defaults(
@@ -185,24 +228,36 @@ def get_intent_defaults(
         strategic_focus = "Inquiry out of scope: Direct user to financial ledger analysis."
 
     else:  # ANOMALY_INVESTIGATION
-        hypotheses = [
-            f"Gross margin compression is driven by acute COGS expansion in specific '{dimension_col}' partitions rather than systemic enterprise erosion.",
-            f"Top-line '{revenue_col}' variance across '{period_col}' intervals caused negative operating leverage on fixed delivery costs.",
-            f"Contractual or logistics cost spikes in outlier regions created disproportionate basis-point drag on consolidated margins.",
-        ]
-        metrics = [
-            revenue_col,
-            cogs_col,
-            "gross_profit",
-            "gross_margin_pct",
-            "revenue_delta_pct",
-            "cogs_delta_pct",
-            "gm_variance_bps",
-        ]
-        sql_objective = (
-            f"Compute regional baseline vs comparison period revenue, COGS, gross margins, and basis-point variance across '{dimension_col}' to isolate anomalies."
-        )
-        strategic_focus = f"Decompose {revenue_col} and {cogs_col} variance across {dimension_col} to isolate root cause anomalies."
+        if any(k in query.lower() for k in ["loss", "losses", "profit", "net profit", "profitable", "any loss"]):
+            hypotheses = [
+                f"Consolidated top-line '{revenue_col}' exceeds total operating expenditures across '{dimension_col}', delivering overall enterprise profitability.",
+                f"Individual cost components (COGS, marketing, opex) have remained within budget thresholds without causing net operating deficit.",
+                f"Operating margin remains positive across the evaluated intervals with no material solvency concerns.",
+            ]
+            metrics = [revenue_col, cogs_col, "total_revenue", "total_cogs", "net_profit_loss"]
+            sql_objective = (
+                f"Calculate total revenue, total COGS, and all operational expenses across the dataset to determine if the business operates at a net profit or net loss."
+            )
+            strategic_focus = f"Evaluate enterprise profitability and verify whether operations incurred a net financial loss."
+        else:
+            hypotheses = [
+                f"Gross margin compression is driven by acute COGS expansion in specific '{dimension_col}' partitions rather than systemic enterprise erosion.",
+                f"Top-line '{revenue_col}' variance across '{period_col}' intervals caused negative operating leverage on fixed delivery costs.",
+                f"Contractual or logistics cost spikes in outlier regions created disproportionate basis-point drag on consolidated margins.",
+            ]
+            metrics = [
+                revenue_col,
+                cogs_col,
+                "gross_profit",
+                "gross_margin_pct",
+                "revenue_delta_pct",
+                "cogs_delta_pct",
+                "gm_variance_bps",
+            ]
+            sql_objective = (
+                f"Compute regional baseline vs comparison period revenue, COGS, gross margins, and basis-point variance across '{dimension_col}' to isolate anomalies."
+            )
+            strategic_focus = f"Decompose {revenue_col} and {cogs_col} variance across {dimension_col} to isolate root cause anomalies."
 
     return hypotheses, metrics, sql_objective, strategic_focus
 
@@ -250,6 +305,7 @@ async def run_m_director(
     )
 
     intent = heuristic_intent
+    response_style = classify_response_style(query, heuristic_intent)
     hypotheses = def_hypotheses
     required_metrics = def_metrics
     sql_objective = def_sql_obj
@@ -283,14 +339,9 @@ async def run_m_director(
 
     quota_exceeded = False
 
-    # Attempt Gemini-powered decomposition if API key is provided
-    if settings.GEMINI_API_KEY and settings.GEMINI_API_KEY != "your_gemini_api_key_here":
+    # Attempt LLM Router-powered decomposition if API key is provided
+    if (settings.GEMINI_API_KEY and settings.GEMINI_API_KEY != "your_gemini_api_key_here") or settings.GROQ_API_KEY:
         try:
-            from google import genai
-            from google.genai import types
-
-            client = genai.Client(api_key=settings.GEMINI_API_KEY)
-
             history_context = ""
             if conversation_history:
                 formatted_history = []
@@ -317,9 +368,13 @@ async def run_m_director(
                 f"- SEGMENT_BREAKDOWN: Product, category, or regional slice comparisons.\n"
                 f"- GENERAL_INQUIRY: Factual ledger queries (top customers, monthly totals, averages, record counts).\n"
                 f"- OUT_OF_SCOPE: Inquiries completely outside financial transaction ledger analysis (e.g. weather, sports, general knowledge, chit-chat, recipes, movies).\n\n"
+                f"Determine the response_style:\n"
+                f"- DIRECT_BINARY: User asks a direct binary check, single verification, or yes/no question (e.g. 'Is there any loss?', 'Are sales growing?', 'Did we beat target?').\n"
+                f"- EXPLORATORY_DETAILED: User asks an investigative, root-cause, or comparative question (e.g. 'Why did gross margin drop in Q2?', 'Compare Product A vs Product B').\n\n"
                 f"Respond with JSON adhering to this exact schema:\n"
                 f"{{\n"
                 f'  "intent": "TREND_GROWTH" | "PROFITABILITY_FORECAST" | "ANOMALY_INVESTIGATION" | "SEGMENT_BREAKDOWN" | "GENERAL_INQUIRY" | "OUT_OF_SCOPE",\n'
+                f'  "response_style": "DIRECT_BINARY" | "EXPLORATORY_DETAILED",\n'
                 f'  "hypotheses": ["hypothesis 1", "hypothesis 2", "hypothesis 3"],\n'
                 f'  "required_metrics": ["metric1", "metric2", ...],\n'
                 f'  "sql_objective": "Concise natural language specification of what query Agent Q must generate",\n'
@@ -327,19 +382,20 @@ async def run_m_director(
                 f"}}"
             )
 
-            response = client.models.generate_content(
-                model=settings.GEMINI_MODEL,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    temperature=0.2,
-                ),
+            raw_resp = await route_completion(
+                prompt=prompt,
+                response_format={"type": "json_object"},
+                temperature=0.2,
             )
 
-            parsed = json.loads(response.text)
-            gemini_intent = str(parsed.get("intent", "")).upper()
-            if gemini_intent in VALID_INTENTS:
-                intent = gemini_intent
+            parsed = extract_json_payload(raw_resp)
+            llm_intent = str(parsed.get("intent", "")).upper()
+            if llm_intent in VALID_INTENTS:
+                intent = llm_intent
+
+            llm_style = str(parsed.get("response_style", "")).upper()
+            if llm_style in ("DIRECT_BINARY", "EXPLORATORY_DETAILED"):
+                response_style = llm_style
 
             hypotheses = parsed.get("hypotheses") or hypotheses
             required_metrics = parsed.get("required_metrics") or required_metrics
@@ -351,14 +407,14 @@ async def run_m_director(
                 f"Execute dynamic DuckDB SQL targeting '{table_name}' fulfilling SQL objective: {sql_objective}"
             )
 
-            logger.info("Director M classified intent '%s' via %s", intent, settings.GEMINI_MODEL)
+            logger.info("Director M classified intent '%s' (style: %s) via LiteLLM Router", intent, response_style)
         except Exception as e:
             err_str = str(e)
             if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
                 quota_exceeded = True
-                logger.warning("Gemini M quota exceeded (429), switching to deterministic routing: %s", e)
+                logger.warning("LLM Router M quota exceeded (429), switching to deterministic routing: %s", e)
             else:
-                logger.warning("Gemini M generation failed, falling back to deterministic plan: %s", e)
+                logger.warning("LLM Router M generation failed, falling back to deterministic plan: %s", e)
 
     refusal_message = (
         "I cannot answer that question because this workspace is analyzing your financial transaction ledger. "
@@ -369,6 +425,7 @@ async def run_m_director(
         "task_id": task_id,
         "user_query": query,
         "intent": intent,
+        "response_style": response_style,
         "dimension_col": dimension_col,
         "target_entities": target_entities,
         "requested_metrics": requested_metrics,
