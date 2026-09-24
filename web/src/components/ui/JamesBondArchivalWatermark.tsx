@@ -41,6 +41,19 @@ export const JamesBondArchivalWatermark: React.FC<JamesBondArchivalWatermarkProp
     return paths;
   }, []);
 
+  // Generate the 36 degree calibration ticks for the gun barrel with fixed 2-decimal precision
+  const barrelTicks = useMemo(() => {
+    return Array.from({ length: 36 }).map((_, i) => {
+      const angle = (i * 10 * Math.PI) / 180;
+      const rIn = i % 3 === 0 ? 270 : 275;
+      const x1 = Number((130 + rIn * Math.cos(angle)).toFixed(2));
+      const y1 = Number((440 + rIn * Math.sin(angle)).toFixed(2));
+      const x2 = Number((130 + 280 * Math.cos(angle)).toFixed(2));
+      const y2 = Number((440 + 280 * Math.sin(angle)).toFixed(2));
+      return { x1, y1, x2, y2 };
+    });
+  }, []);
+
   return (
     <div
       className={`pointer-events-none select-none absolute inset-0 z-0 overflow-hidden opacity-[0.045] dark:opacity-[0.075] transition-opacity duration-300 ${className}`}
@@ -85,6 +98,7 @@ export const JamesBondArchivalWatermark: React.FC<JamesBondArchivalWatermarkProp
         viewBox="0 0 1440 920"
         preserveAspectRatio="xMidYMid slice"
         className="w-full h-full text-text-secondary stroke-current fill-none"
+        suppressHydrationWarning={true}
       >
         <defs>
           {/* Circular path for SIS Circular Stamp text */}
@@ -127,7 +141,7 @@ export const JamesBondArchivalWatermark: React.FC<JamesBondArchivalWatermarkProp
         ))}
 
         {/* ── MOTIF 1: THE JAMES BOND 007 GUN BARREL SPIRAL ── */}
-        <g id="gun-barrel-spiral" opacity="0.85">
+        <g id="gun-barrel-spiral" opacity="0.85" suppressHydrationWarning={true}>
           {/* Outer Barrel Aperture Rings */}
           <circle cx="130" cy="440" r="280" strokeWidth="1" />
           <circle cx="130" cy="440" r="240" strokeWidth="0.5" strokeDasharray="4 4" />
@@ -148,19 +162,22 @@ export const JamesBondArchivalWatermark: React.FC<JamesBondArchivalWatermarkProp
               d={pathD}
               strokeWidth={idx % 2 === 0 ? "0.85" : "0.5"}
               opacity={idx % 3 === 0 ? "0.9" : "0.6"}
+              suppressHydrationWarning={true}
             />
           ))}
 
           {/* Barrel Degree Calibration Ticks */}
-          {Array.from({ length: 36 }).map((_, i) => {
-            const angle = (i * 10 * Math.PI) / 180;
-            const rIn = i % 3 === 0 ? 270 : 275;
-            const x1 = 130 + rIn * Math.cos(angle);
-            const y1 = 440 + rIn * Math.sin(angle);
-            const x2 = 130 + 280 * Math.cos(angle);
-            const y2 = 440 + 280 * Math.sin(angle);
-            return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} strokeWidth="0.5" />;
-          })}
+          {barrelTicks.map((tick, i) => (
+            <line
+              key={i}
+              x1={tick.x1}
+              y1={tick.y1}
+              x2={tick.x2}
+              y2={tick.y2}
+              strokeWidth="0.5"
+              suppressHydrationWarning={true}
+            />
+          ))}
 
           {/* Gun Barrel Annotation Labels */}
           <text

@@ -51,10 +51,13 @@ export function SmoothScrollProvider({ children }: { children: React.ReactNode }
       animId = requestAnimationFrame(raf);
     }
 
-    init();
+    let timeoutId: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+      init();
+    }, 0);
 
     return () => {
       cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
       if (animId) cancelAnimationFrame(animId);
       if (lenis) {
         lenis.destroy();

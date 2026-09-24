@@ -28,11 +28,13 @@ import { DataTableCard } from "./DataTableCard";
 interface VisualEvidenceProps {
   audit: Eve_Audit;
   diagnostic?: Q_Diagnostic;
+  currencySymbol?: string;
 }
 
 export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
   audit,
   diagnostic,
+  currencySymbol,
 }) => {
   // Tab state: "chart" | "table"
   const [activeTab, setActiveTab] = useState<"chart" | "table">("chart");
@@ -50,6 +52,22 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
     { region: "APAC (West)", q1_gm_pct: 43.75, q2_gm_pct: 43.37 },
   ];
 
+  // Dynamic series and axis extraction from Eve's chart spec
+  const xAxisKey = audit.chart_spec?.x_axis_key || "region";
+  const seriesList =
+    audit.chart_spec?.series && audit.chart_spec.series.length > 0
+      ? audit.chart_spec.series
+      : [
+          { key: "q1_gm_pct", label: "Q1 Gross Margin %", color_role: "comparison" },
+          { key: "q2_gm_pct", label: "Q2 Gross Margin %", color_role: "primary" },
+        ];
+
+  const isPctMetric = seriesList.every((s: any) => {
+    const k = String(s.key || "").toLowerCase();
+    const l = String(s.label || "").toLowerCase();
+    return k.includes("pct") || k.includes("margin") || k.includes("rate") || l.includes("%");
+  });
+
   const seriesColorMap = {
     primary: "var(--chart-bar-primary)",
     comparison: "var(--chart-bar-secondary)",
@@ -61,14 +79,20 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
         <div className="rounded border border-noir bg-bg-surface p-3 font-body text-xs shadow-none">
           <div className="font-display font-bold uppercase tracking-tight text-text-primary mb-1.5">{label}</div>
           <div className="flex flex-col gap-1 text-[11px] font-mono tabular-nums">
-            {payload.map((entry: any, index: number) => (
-              <div key={`item-${index}`} className="flex items-center justify-between gap-4">
-                <span className="text-text-secondary">{entry.name}:</span>
-                <span className="font-bold text-text-primary tabular-nums">
-                  {Number(entry.value).toFixed(2)}%
-                </span>
-              </div>
-            ))}
+            {payload.map((entry: any, index: number) => {
+              const val = Number(entry.value);
+              const formattedVal = isPctMetric
+                ? `${val.toFixed(2)}%`
+                : `${currencySymbol || diagnostic?.anomalyData?.currencySymbol || "$"}${val.toLocaleString("en-US")}`;
+              return (
+                <div key={`item-${index}`} className="flex items-center justify-between gap-4">
+                  <span className="text-text-secondary">{entry.name}:</span>
+                  <span className="font-bold text-text-primary tabular-nums">
+                    {formattedVal}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       );
@@ -185,14 +209,15 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
                   <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
                     <XAxis
-                      dataKey="region"
+                      dataKey={xAxisKey}
                       stroke="var(--text-secondary)"
                       tick={{ fill: "var(--text-secondary)", fontSize: 11, fontFamily: "var(--font-sans), sans-serif" }}
                       tickLine={{ stroke: "var(--chart-grid)" }}
                     />
                     <YAxis
-                      unit="%"
-                      domain={[20, 50]}
+                      unit={isPctMetric ? "%" : ""}
+                      domain={isPctMetric ? [20, 50] : ["auto", "auto"]}
+                      tickFormatter={isPctMetric ? undefined : (v) => `${v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${(v / 1e3).toFixed(0)}k` : v}`}
                       stroke="var(--text-secondary)"
                       tick={{ fill: "var(--text-secondary)", fontSize: 11, fontFamily: "ui-monospace, monospace" }}
                       tickLine={{ stroke: "var(--chart-grid)" }}
@@ -207,31 +232,29 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
                         letterSpacing: "0.05em",
                       }}
                     />
-                    <Bar
-                      dataKey="q1_gm_pct"
-                      name="Q1 Gross Margin %"
-                      fill="var(--chart-bar-secondary)"
-                      radius={[2, 2, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="q2_gm_pct"
-                      name="Q2 Gross Margin %"
-                      fill="var(--chart-bar-primary)"
-                      radius={[2, 2, 0, 0]}
-                    />
+                    {seriesList.map((s: any, idx: number) => (
+                      <Bar
+                        key={s.key || idx}
+                        dataKey={s.key}
+                        name={s.label || s.key}
+                        fill={s.color_role === "primary" ? "var(--chart-bar-primary)" : "var(--chart-bar-secondary)"}
+                        radius={[2, 2, 0, 0]}
+                      />
+                    ))}
                   </BarChart>
                 ) : (
                   <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
                     <XAxis
-                      dataKey="region"
+                      dataKey={xAxisKey}
                       stroke="var(--text-secondary)"
                       tick={{ fill: "var(--text-secondary)", fontSize: 11, fontFamily: "var(--font-sans), sans-serif" }}
                       tickLine={{ stroke: "var(--chart-grid)" }}
                     />
                     <YAxis
-                      unit="%"
-                      domain={[20, 50]}
+                      unit={isPctMetric ? "%" : ""}
+                      domain={isPctMetric ? [20, 50] : ["auto", "auto"]}
+                      tickFormatter={isPctMetric ? undefined : (v) => `${v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${(v / 1e3).toFixed(0)}k` : v}`}
                       stroke="var(--text-secondary)"
                       tick={{ fill: "var(--text-secondary)", fontSize: 11, fontFamily: "ui-monospace, monospace" }}
                       tickLine={{ stroke: "var(--chart-grid)" }}
@@ -246,22 +269,20 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
                         letterSpacing: "0.05em",
                       }}
                     />
-                    <Line
-                      type="monotone"
-                      dataKey="q1_gm_pct"
-                      name="Q1 Gross Margin %"
-                      stroke="var(--chart-bar-secondary)"
-                      strokeWidth={2}
-                      dot={{ r: 4, fill: "var(--chart-bar-secondary)" }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="q2_gm_pct"
-                      name="Q2 Gross Margin %"
-                      stroke="var(--chart-bar-primary)"
-                      strokeWidth={2.5}
-                      dot={{ r: 5, fill: "var(--chart-bar-primary)" }}
-                    />
+                    {seriesList.map((s: any, idx: number) => (
+                      <Line
+                        key={s.key || idx}
+                        type="monotone"
+                        dataKey={s.key}
+                        name={s.label || s.key}
+                        stroke={s.color_role === "primary" ? "var(--chart-bar-primary)" : "var(--chart-bar-secondary)"}
+                        strokeWidth={s.color_role === "primary" ? 2.5 : 2}
+                        dot={{
+                          r: s.color_role === "primary" ? 5 : 4,
+                          fill: s.color_role === "primary" ? "var(--chart-bar-primary)" : "var(--chart-bar-secondary)",
+                        }}
+                      />
+                    ))}
                   </LineChart>
                 )}
               </ResponsiveContainer>
@@ -294,7 +315,10 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
 
               {isTableExpandedUnderChart && (
                 <div className="mt-3 pt-1 animate-in fade-in duration-200">
-                  <DataTableCard diagnostic={diagnostic} />
+                  <DataTableCard
+                    diagnostic={diagnostic}
+                    currencySymbol={currencySymbol || diagnostic.anomalyData?.currencySymbol}
+                  />
                 </div>
               )}
             </div>
@@ -305,7 +329,10 @@ export const VisualEvidence: React.FC<VisualEvidenceProps> = ({
       {/* ── View 2: Supporting Ledger Tab ── */}
       {activeTab === "table" && diagnostic && (
         <div className="space-y-3 animate-in fade-in duration-200">
-          <DataTableCard diagnostic={diagnostic} />
+          <DataTableCard
+            diagnostic={diagnostic}
+            currencySymbol={currencySymbol || diagnostic.anomalyData?.currencySymbol}
+          />
         </div>
       )}
     </section>

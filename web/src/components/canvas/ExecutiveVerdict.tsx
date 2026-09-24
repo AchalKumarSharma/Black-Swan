@@ -23,15 +23,18 @@ export const ExecutiveVerdict: React.FC<ExecutiveVerdictProps> = ({
 }) => {
   const anomaly = diagnostic.anomalies_detected?.[0];
 
-  // Lever 1: South Region COGS Adjustment (-20% to +10%, default -12%)
+  const currSymbol = diagnostic.anomalyData?.currencySymbol || "$";
+  const targetRegion = diagnostic.anomalyData?.region || "South";
+
+  // Lever 1: Target Region COGS Adjustment (-20% to +10%, default -12%)
   const [cogsAdjustment, setCogsAdjustment] = useState<number>(-12);
 
-  // Dynamic pro-forma calculations based on South Region COGS ($525,000) and Enterprise Revenue ($4,410,000)
-  const baseSouthCogs = 525000;
+  // Dynamic pro-forma calculations based on target region COGS and enterprise volume
+  const baseCogs = Number(diagnostic.anomalyData?.actualBilled || 525000);
   const baseEnterpriseRevenue = 4410000;
 
-  // COGS delta in South region
-  const cogsSavingsQuarterly = -(baseSouthCogs * (cogsAdjustment / 100));
+  // COGS delta in target region
+  const cogsSavingsQuarterly = -(baseCogs * (cogsAdjustment / 100));
   const cogsSavingsMonthly = Math.round(cogsSavingsQuarterly / 3);
 
   // Consolidated Gross Margin Recovery percentage points
@@ -64,24 +67,12 @@ export const ExecutiveVerdict: React.FC<ExecutiveVerdictProps> = ({
       <div className="space-y-4">
         {/* Highlighted Core Finding in Bold Editorial Text */}
         <div className="font-body text-xl sm:text-2xl text-text-primary leading-snug">
-          Enterprise Gross Margin compressed{" "}
-          <span className="font-body font-bold tabular-nums text-inherit tracking-normal text-accent-rust">
-            -311 bps YoY (42.97% → 39.86%)
-          </span>
-          . Isolated to South Region COGS expanding{" "}
-          <span className="font-body font-bold tabular-nums text-inherit tracking-normal text-accent-rust">
-            +6.06%
-          </span>{" "}
-          despite a{" "}
-          <span className="font-body font-bold tabular-nums text-inherit tracking-normal text-text-primary">
-            -12.50%
-          </span>{" "}
-          top-line contraction.
+          {diagnostic.summary_findings?.[0] || "Enterprise Gross Margin compressed across periods."}
         </div>
 
         {/* Narrative findings */}
-        <div className="flex flex-col gap-1 text-xs text-text-secondary font-body">
-          {diagnostic.summary_findings.slice(0, 2).map((finding, idx) => (
+        <div className="flex flex-col gap-1.5 text-xs text-text-secondary font-body">
+          {diagnostic.summary_findings.slice(1).map((finding, idx) => (
             <div key={idx} className="flex items-start gap-2">
               <span className="text-text-secondary font-body font-bold leading-none mt-0.5">•</span>
               <span className="leading-relaxed tabular-nums">{finding}</span>
@@ -121,7 +112,7 @@ export const ExecutiveVerdict: React.FC<ExecutiveVerdictProps> = ({
                   Volume-Expected
                 </span>
                 <span className="text-base font-semibold text-text-primary tabular-nums font-mono block">
-                  ${Number(anomaly.expected).toLocaleString("en-US")}
+                  {currSymbol}{Number(anomaly.expected).toLocaleString("en-US")}
                 </span>
               </div>
               <div>
@@ -129,7 +120,7 @@ export const ExecutiveVerdict: React.FC<ExecutiveVerdictProps> = ({
                   Actual Billed
                 </span>
                 <span className="text-base font-semibold text-accent-rust tabular-nums font-mono block">
-                  ${Number(anomaly.actual).toLocaleString("en-US")}
+                  {currSymbol}{Number(anomaly.actual).toLocaleString("en-US")}
                 </span>
               </div>
               <div>
@@ -218,7 +209,7 @@ export const ExecutiveVerdict: React.FC<ExecutiveVerdictProps> = ({
                 </span>
                 <span className="text-text-secondary/40 mx-1 text-xs">|</span>
                 <span className="text-xs uppercase tracking-wider font-body font-medium italic text-text-secondary">
-                  South Region COGS Lever
+                  {targetRegion} Region COGS Lever
                 </span>
               </div>
 
@@ -229,7 +220,7 @@ export const ExecutiveVerdict: React.FC<ExecutiveVerdictProps> = ({
                 </span>
                 <span className="text-text-secondary">•</span>
                 <span className="text-text-muted">
-                  ${Math.abs(cogsSavingsMonthly).toLocaleString()}/mo {cogsSavingsMonthly >= 0 ? "cash conservation" : "cash burden"}
+                  {currSymbol}{Math.abs(cogsSavingsMonthly).toLocaleString()}/mo {cogsSavingsMonthly >= 0 ? "cash conservation" : "cash burden"}
                 </span>
               </div>
             </div>

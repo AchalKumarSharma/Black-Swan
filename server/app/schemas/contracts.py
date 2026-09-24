@@ -81,6 +81,17 @@ class M_Plan(BaseModel):
 
     task_id: str
     user_query: str
+    intent: Optional[Literal[
+        "TREND_GROWTH",
+        "PROFITABILITY_FORECAST",
+        "ANOMALY_INVESTIGATION",
+        "SEGMENT_BREAKDOWN",
+        "GENERAL_INQUIRY",
+    ]] = Field(default="ANOMALY_INVESTIGATION", description="Intent classification")
+    hypotheses: Optional[List[str]] = Field(default_factory=list)
+    required_metrics: Optional[List[str]] = Field(default_factory=list)
+    sql_objective: Optional[str] = Field(default="", description="Target query specification for Agent Q")
+    strategic_focus: Optional[str] = Field(default="")
     subtasks: List[Dict[str, str]] = Field(
         ...,
         description="Subtasks containing step_id, agent_assigned, and goal",

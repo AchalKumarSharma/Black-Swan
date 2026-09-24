@@ -66,6 +66,11 @@ export type M_PlanStatus = "planning" | "executing" | "completed" | "failed";
 export interface M_Plan {
   task_id: string;
   user_query: string;
+  intent?: string;
+  hypotheses?: string[];
+  required_metrics?: string[];
+  sql_objective?: string;
+  strategic_focus?: string;
   subtasks: Array<Record<string, string>>;
   status: M_PlanStatus;
   [key: string]: any;
@@ -109,7 +114,7 @@ export interface Agent007_Strategy {
 }
 
 // -----------------------------------------------------------------------------
-// SSE Stream Event
+// SSE Stream Event & Report Block
 // -----------------------------------------------------------------------------
 
 export type SSEEventType =
@@ -118,6 +123,8 @@ export type SSEEventType =
   | "eve_audit"
   | "007_strategy"
   | "status_update"
+  | "out_of_scope"
+  | "pipeline_complete"
   | "error";
 
 export type AgentRole = "M" | "Q" | "Eve" | "007" | "System";
@@ -127,4 +134,19 @@ export interface SSEStreamEvent {
   agent: AgentRole;
   payload: Record<string, any>;
   timestamp: string;
+}
+
+export interface ReportBlock {
+  id: string;
+  query: string;
+  timestamp: string;
+  mPlan: M_Plan | null;
+  qDiagnostic: Q_Diagnostic | null;
+  eveAudit: Eve_Audit | null;
+  strategy007: Agent007_Strategy | null;
+  outOfScope?: {
+    refusal_message: string;
+    suggested_queries: string[];
+  } | null;
+  quotaExceeded?: boolean;
 }

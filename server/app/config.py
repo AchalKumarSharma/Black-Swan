@@ -6,12 +6,27 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+from pathlib import Path
+
+_SERVER_DIR = Path(__file__).resolve().parent.parent
+_ENV_FILES = (
+    str(_SERVER_DIR / ".env"),
+    str(_SERVER_DIR / ".env.local"),
+    ".env",
+    ".env.local",
+)
+
+
 class Settings(BaseSettings):
     """Application settings and environment configuration."""
 
     GEMINI_API_KEY: str = Field(
         default="",
         description="Google Gemini / Antigravity ADK API key",
+    )
+    GEMINI_MODEL: str = Field(
+        default="gemini-2.5-flash",
+        description="Default Gemini model for FP&A agents",
     )
     SUPABASE_URL: str = Field(
         default="",
@@ -26,7 +41,7 @@ class Settings(BaseSettings):
         description="Supabase service role secret key",
     )
     CORS_ORIGINS: List[str] = Field(
-        default=["http://localhost:3000"],
+        default=["http://localhost:3000", "http://127.0.0.1:3000"],
         description="Allowed CORS origins for Next.js frontend",
     )
     ENVIRONMENT: str = Field(
@@ -35,10 +50,11 @@ class Settings(BaseSettings):
     )
 
     model_config = SettingsConfigDict(
-        env_file=(".env", ".env.local"),
+        env_file=_ENV_FILES,
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
 
 
 @lru_cache()

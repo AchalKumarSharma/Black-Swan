@@ -5,11 +5,23 @@ import { ChevronDown, FileText, User } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { BlackSwanLogo } from "@/components/ui/BlackSwanLogo";
 
-interface TopHeaderProps {
-  isSystemLive?: boolean;
+export interface ActiveDatasetInfo {
+  id: string;
+  fileName: string;
+  rowCount: number;
 }
 
-export const TopHeader: React.FC<TopHeaderProps> = ({ isSystemLive = true }) => {
+interface TopHeaderProps {
+  isSystemLive?: boolean;
+  activeDataset?: ActiveDatasetInfo | null;
+  onUploadNew?: () => void;
+}
+
+export const TopHeader: React.FC<TopHeaderProps> = ({
+  isSystemLive = true,
+  activeDataset,
+  onUploadNew,
+}) => {
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between border-b border-noir bg-bg-canvas/95 px-6 backdrop-blur-sm transition-colors duration-200">
       {/* Left: Brand Identity & Mode Tag */}
@@ -33,15 +45,34 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ isSystemLive = true }) => 
         <div className="flex items-center gap-2 rounded-md border border-noir bg-bg-surface px-3 py-1.5 text-xs text-text-primary font-body">
           <span className="font-semibold">Default Workspace</span>
           <span className="text-text-secondary/60">/</span>
-          <span className="font-mono text-[11px] text-text-muted">
-            SaaS_Q2_Financials.csv
-          </span>
-          <span className="font-body text-[11px] text-text-secondary italic">
-            • 12,450 rows
-          </span>
-          <ChevronDown className="h-3.5 w-3.5 text-text-secondary ml-1" />
+          {activeDataset ? (
+            <>
+              <span className="font-mono text-[11px] text-text-primary font-medium">
+                {activeDataset.fileName}
+              </span>
+              <span className="font-body text-[11px] text-text-secondary italic">
+                • {activeDataset.rowCount.toLocaleString()} rows
+              </span>
+            </>
+          ) : (
+            <span className="font-body text-[11px] text-text-muted italic">
+              No Active Dataset
+            </span>
+          )}
+          {onUploadNew && (
+            <button
+              type="button"
+              onClick={onUploadNew}
+              title={activeDataset ? "Switch or upload dataset" : "Ingest dataset"}
+              className="ml-1 inline-flex items-center gap-1 rounded border border-border-noir bg-bg-canvas px-1.5 py-0.5 font-mono text-[10px] font-semibold text-text-secondary hover:border-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+            >
+              <span>{activeDataset ? "SWITCH" : "INGEST"}</span>
+              <ChevronDown className="h-3 w-3" />
+            </button>
+          )}
         </div>
       </div>
+
 
       {/* Right Utility Bar */}
       <div className="flex items-center gap-3 sm:gap-4">

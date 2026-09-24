@@ -15,161 +15,262 @@ import { Q_Diagnostic } from "@/types/contracts";
 interface DataTableCardProps {
   diagnostic: Q_Diagnostic;
   hideHeader?: boolean;
+  currencySymbol?: string;
 }
 
 export const DataTableCard: React.FC<DataTableCardProps> = ({
   diagnostic,
   hideHeader = false,
+  currencySymbol,
 }) => {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [copiedSql, setCopiedSql] = useState(false);
 
+  // If no currencySymbol is passed into props, default to anomalyData?.currencySymbol || "₹"
+  const activeCurrency = currencySymbol || diagnostic.anomalyData?.currencySymbol || "₹";
+
+  const isStandardMarginSlice = useMemo(() => {
+    const headers = diagnostic.table_headers || [];
+    return headers.includes("q1_revenue") && headers.includes("region");
+  }, [diagnostic.table_headers]);
+
   // Column definitions with formatting for financial metrics
   const columns = useMemo<ColumnDef<Record<string, any>>[]>(() => {
-    return [
-      {
-        accessorKey: "region",
-        header: "Territory / Region",
-        cell: (info) => {
-          const name = String(info.getValue());
-          const isSouth = name.toLowerCase().includes("south");
-          return (
-            <div className="flex items-center gap-2">
-              <span className={`font-body text-sm ${isSouth ? "font-bold text-accent-rust" : "font-medium text-text-primary"}`}>
-                {name}
-              </span>
-              {isSouth && (
-                <span className="inline-flex items-center gap-1 rounded bg-accent-rust/15 px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider text-accent-rust">
-                  <AlertCircle className="h-2.5 w-2.5" />
-                  Primary Anomaly
+    if (isStandardMarginSlice) {
+      return [
+        {
+          accessorKey: "region",
+          header: "Territory / Region",
+          cell: (info) => {
+            const name = String(info.getValue());
+            const isSouth = name.toLowerCase().includes("south");
+            return (
+              <div className="flex items-center gap-2">
+                <span className={`font-body text-sm ${isSouth ? "font-bold text-accent-rust" : "font-medium text-text-primary"}`}>
+                  {name}
                 </span>
-              )}
-            </div>
-          );
+                {isSouth && (
+                  <span className="inline-flex items-center gap-1 rounded bg-accent-rust/15 px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider text-accent-rust">
+                    <AlertCircle className="h-2.5 w-2.5" />
+                    Primary Anomaly
+                  </span>
+                )}
+              </div>
+            );
+          },
         },
-      },
-      {
-        accessorKey: "q1_revenue",
-        header: "Q1 Revenue",
-        cell: (info) => {
-          const val = Number(info.getValue());
-          return (
+        {
+          accessorKey: "q1_revenue",
+          header: "Q1 Revenue",
+          cell: (info) => {
+            const val = Number(info.getValue());
+            return (
+              <span className="font-mono text-sm tabular-nums text-text-secondary text-right block">
+                {activeCurrency}{val.toLocaleString("en-US")}
+              </span>
+            );
+          },
+        },
+        {
+          accessorKey: "q2_revenue",
+          header: "Q2 Revenue",
+          cell: (info) => {
+            const val = Number(info.getValue());
+            return (
+              <span className="font-mono text-sm tabular-nums text-text-primary font-semibold text-right block">
+                {activeCurrency}{val.toLocaleString("en-US")}
+              </span>
+            );
+          },
+        },
+        {
+          accessorKey: "revenue_delta_pct",
+          header: "Rev. Δ %",
+          cell: (info) => {
+            const val = Number(info.getValue());
+            const isNegative = val < 0;
+            return (
+              <span
+                className={`font-mono text-sm tabular-nums text-right block ${
+                  isNegative ? "text-accent-rust font-semibold" : "text-text-secondary"
+                }`}
+              >
+                {val > 0 ? `+${val.toFixed(2)}%` : `${val.toFixed(2)}%`}
+              </span>
+            );
+          },
+        },
+        {
+          accessorKey: "q1_cogs",
+          header: "Q1 COGS",
+          cell: (info) => {
+            const val = Number(info.getValue());
+            return (
+              <span className="font-mono text-sm tabular-nums text-text-secondary text-right block">
+                {activeCurrency}{val.toLocaleString("en-US")}
+              </span>
+            );
+          },
+        },
+        {
+          accessorKey: "q2_cogs",
+          header: "Q2 COGS",
+          cell: (info) => {
+            const val = Number(info.getValue());
+            return (
+              <span className="font-mono text-sm tabular-nums text-text-primary font-semibold text-right block">
+                {activeCurrency}{val.toLocaleString("en-US")}
+              </span>
+            );
+          },
+        },
+        {
+          accessorKey: "cogs_delta_pct",
+          header: "COGS Δ %",
+          cell: (info) => {
+            const val = Number(info.getValue());
+            const isHighExpansion = val > 5;
+            return (
+              <span
+                className={`font-mono text-sm tabular-nums text-right block ${
+                  isHighExpansion ? "text-accent-rust font-bold" : "text-text-secondary"
+                }`}
+              >
+                {val > 0 ? `+${val.toFixed(2)}%` : `${val.toFixed(2)}%`}
+              </span>
+            );
+          },
+        },
+        {
+          accessorKey: "q1_gm_pct",
+          header: "Q1 GM %",
+          cell: (info) => (
             <span className="font-mono text-sm tabular-nums text-text-secondary text-right block">
-              ${val.toLocaleString("en-US")}
+              {Number(info.getValue()).toFixed(2)}%
             </span>
-          );
+          ),
         },
-      },
-      {
-        accessorKey: "q2_revenue",
-        header: "Q2 Revenue",
-        cell: (info) => {
-          const val = Number(info.getValue());
+        {
+          accessorKey: "q2_gm_pct",
+          header: "Q2 GM %",
+          cell: (info) => {
+            const val = Number(info.getValue());
+            return (
+              <span className="font-mono text-sm tabular-nums text-text-primary font-semibold text-right block">
+                {val.toFixed(2)}%
+              </span>
+            );
+          },
+        },
+        {
+          accessorKey: "gm_variance_bps",
+          header: "Variance (bps)",
+          cell: (info) => {
+            const val = Number(info.getValue());
+            const isSeverelyNegative = val < -500;
+            return (
+              <span
+                className={`font-mono text-sm tabular-nums font-bold text-right block ${
+                  isSeverelyNegative ? "text-accent-rust" : "text-text-secondary"
+                }`}
+              >
+                {val > 0 ? `+${val.toLocaleString()} bps` : `${val.toLocaleString()} bps`}
+              </span>
+            );
+          },
+        },
+      ];
+    }
+
+    // Dynamic columns for arbitrary intent-generated query results
+    const headers = diagnostic.table_headers || [];
+    return headers.map((headerKey) => {
+      const lower = headerKey.toLowerCase();
+      const isPeriodOrName =
+        lower.includes("period") ||
+        lower.includes("date") ||
+        lower.includes("name") ||
+        lower.includes("region") ||
+        lower.includes("segment") ||
+        lower.includes("category");
+      const isPct =
+        lower.includes("pct") ||
+        lower.includes("percent") ||
+        lower.includes("margin") ||
+        lower.includes("growth");
+      const isBps = lower.includes("bps") || lower.includes("variance");
+      const isCurrency =
+        lower.includes("rev") ||
+        lower.includes("sales") ||
+        lower.includes("cogs") ||
+        lower.includes("cost") ||
+        lower.includes("profit") ||
+        lower.includes("billed") ||
+        lower.includes("amount");
+
+      const formattedHeader = headerKey
+        .split("_")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+
+      return {
+        accessorKey: headerKey,
+        header: formattedHeader,
+        cell: (info: any) => {
+          const raw = info.getValue();
+          if (raw === null || raw === undefined) {
+            return <span className="font-mono text-sm text-text-secondary/40 text-right block">—</span>;
+          }
+
+          if (typeof raw === "number" || (!isNaN(Number(raw)) && !isPeriodOrName)) {
+            const num = Number(raw);
+            if (isPct) {
+              const isNegative = num < 0;
+              return (
+                <span
+                  className={`font-mono text-sm tabular-nums text-right block ${
+                    isNegative ? "text-accent-rust font-semibold" : "text-text-primary"
+                  }`}
+                >
+                  {num > 0 ? `+${num.toFixed(2)}%` : `${num.toFixed(2)}%`}
+                </span>
+              );
+            }
+            if (isBps) {
+              const isNegative = num < -500;
+              return (
+                <span
+                  className={`font-mono text-sm tabular-nums font-bold text-right block ${
+                    isNegative ? "text-accent-rust" : "text-text-primary"
+                  }`}
+                >
+                  {num > 0 ? `+${num.toLocaleString()} bps` : `${num.toLocaleString()} bps`}
+                </span>
+              );
+            }
+            if (isCurrency) {
+              return (
+                <span className="font-mono text-sm tabular-nums text-text-primary font-semibold text-right block">
+                  {activeCurrency}{num.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+                </span>
+              );
+            }
+            return (
+              <span className="font-mono text-sm tabular-nums text-text-secondary text-right block">
+                {num.toLocaleString("en-US")}
+              </span>
+            );
+          }
+
           return (
-            <span className="font-mono text-sm tabular-nums text-text-primary font-semibold text-right block">
-              ${val.toLocaleString("en-US")}
+            <span className="font-body text-sm font-medium text-text-primary">
+              {String(raw)}
             </span>
           );
         },
-      },
-      {
-        accessorKey: "revenue_delta_pct",
-        header: "Rev. Δ %",
-        cell: (info) => {
-          const val = Number(info.getValue());
-          const isNegative = val < 0;
-          return (
-            <span
-              className={`font-mono text-sm tabular-nums text-right block ${
-                isNegative ? "text-accent-rust font-semibold" : "text-text-secondary"
-              }`}
-            >
-              {val > 0 ? `+${val.toFixed(2)}%` : `${val.toFixed(2)}%`}
-            </span>
-          );
-        },
-      },
-      {
-        accessorKey: "q1_cogs",
-        header: "Q1 COGS",
-        cell: (info) => {
-          const val = Number(info.getValue());
-          return (
-            <span className="font-mono text-sm tabular-nums text-text-secondary text-right block">
-              ${val.toLocaleString("en-US")}
-            </span>
-          );
-        },
-      },
-      {
-        accessorKey: "q2_cogs",
-        header: "Q2 COGS",
-        cell: (info) => {
-          const val = Number(info.getValue());
-          return (
-            <span className="font-mono text-sm tabular-nums text-text-primary font-semibold text-right block">
-              ${val.toLocaleString("en-US")}
-            </span>
-          );
-        },
-      },
-      {
-        accessorKey: "cogs_delta_pct",
-        header: "COGS Δ %",
-        cell: (info) => {
-          const val = Number(info.getValue());
-          const isHighExpansion = val > 5;
-          return (
-            <span
-              className={`font-mono text-sm tabular-nums text-right block ${
-                isHighExpansion ? "text-accent-rust font-bold" : "text-text-secondary"
-              }`}
-            >
-              {val > 0 ? `+${val.toFixed(2)}%` : `${val.toFixed(2)}%`}
-            </span>
-          );
-        },
-      },
-      {
-        accessorKey: "q1_gm_pct",
-        header: "Q1 GM %",
-        cell: (info) => (
-          <span className="font-mono text-sm tabular-nums text-text-secondary text-right block">
-            {Number(info.getValue()).toFixed(2)}%
-          </span>
-        ),
-      },
-      {
-        accessorKey: "q2_gm_pct",
-        header: "Q2 GM %",
-        cell: (info) => {
-          const val = Number(info.getValue());
-          return (
-            <span className="font-mono text-sm tabular-nums text-text-primary font-semibold text-right block">
-              {val.toFixed(2)}%
-            </span>
-          );
-        },
-      },
-      {
-        accessorKey: "gm_variance_bps",
-        header: "Variance (bps)",
-        cell: (info) => {
-          const val = Number(info.getValue());
-          const isSeverelyNegative = val < -500;
-          return (
-            <span
-              className={`font-mono text-sm tabular-nums font-bold text-right block ${
-                isSeverelyNegative ? "text-accent-rust" : "text-text-secondary"
-              }`}
-            >
-              {val > 0 ? `+${val.toLocaleString()} bps` : `${val.toLocaleString()} bps`}
-            </span>
-          );
-        },
-      },
-    ];
-  }, []);
+      };
+    });
+  }, [isStandardMarginSlice, diagnostic.table_headers, activeCurrency]);
 
   const table = useReactTable({
     data: diagnostic.rows,
