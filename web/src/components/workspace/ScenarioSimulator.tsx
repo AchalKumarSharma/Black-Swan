@@ -139,8 +139,18 @@ export const ScenarioSimulator: React.FC<ScenarioSimulatorProps> = ({
     );
   }
 
+  if (Array.isArray(levers) && levers.length === 0) {
+    return (
+      <div className="w-full bg-bg-canvas border border-border-subtle rounded-md p-4 text-center">
+        <div className="text-[11px] font-mono uppercase tracking-widest text-emerald-400 font-semibold">
+          OPERATIONAL BASELINE HEALTHY: No remediation levers required.
+        </div>
+      </div>
+    );
+  }
+
   const activeLeversList = useMemo(() => {
-    return levers && levers.length > 0 ? levers : DEFAULT_LEVERS;
+    return levers !== undefined ? levers : DEFAULT_LEVERS;
   }, [levers]);
 
   // Manage active set of enabled lever IDs using local React state

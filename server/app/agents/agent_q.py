@@ -104,31 +104,129 @@ def _repair_sql(sql: str, error_msg: str, table_name: str, columns: List[str]) -
     return repaired
 
 
-def get_authoritative_ledger_totals(
-    table_name: str,
-    revenue_col: str,
-    cogs_col: str,
-    expense_cols: Optional[List[str]] = None,
+_DATASET_BASELINE_CACHE: Dict[str, Dict[str, float]] = {}
+
+
+def get_dataset_baseline(
+    con_or_table: Any = None,
+    table_name: Optional[str] = None,
+    inferred_schema: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, float]:
-    """Query DuckDB directly for single source of truth ledger aggregations to prevent double-counting."""
-    exp_cols = expense_cols or []
-    exp_terms = [f'COALESCE(SUM(try_cast("{col}" AS DOUBLE)), 0) AS exp_{i}' for i, col in enumerate(exp_cols)]
-    exp_sql = (",\n    " + ",\n    ".join(exp_terms)) if exp_terms else ""
-    sql = f"""SELECT 
-        COALESCE(SUM(try_cast("{revenue_col}" AS DOUBLE)), 0) AS total_revenue,
-        COALESCE(SUM(try_cast("{cogs_col}" AS DOUBLE)), 0) AS total_cogs{exp_sql}
-    FROM "{table_name}";"""
+    """Execute a deterministic query against the active dataset table to fetch true enterprise totals.
+    
+    Supports:
+        get_dataset_baseline(con, table_name)
+        get_dataset_baseline(table_name)
+    """
+    if isinstance(con_or_table, str):
+        t_name = con_or_table
+        con = get_duckdb()
+    else:
+        con = con_or_table or get_duckdb()
+        t_name = table_name or ""
+
+    if not t_name:
+        return {
+            "total_revenue": 0.0,
+            "total_cogs": 0.0,
+            "total_opex": 0.0,
+            "total_costs": 0.0,
+            "net_profit_loss": 0.0,
+            "net_margin_pct": 0.0,
+        }
+
+    if t_name in _DATASET_BASELINE_CACHE:
+        return _DATASET_BASELINE_CACHE[t_name]
+
     try:
-        df = query_dataset(table_name, sql)
+        desc = con.execute(f'DESCRIBE "{t_name}"').fetchall()
+        col_names = [d[0] for d in desc]
+    except Exception as e:
+        logger.warning("DESCRIBE table failed in get_dataset_baseline: %s", e)
+        col_names = [c.get("name") for c in (inferred_schema or {}).get("columns", []) if c.get("name")]
+
+    # 1. Total Revenue: checking columns matching revenue, sales, turnover, topline
+    rev_col = None
+    if inferred_schema and inferred_schema.get("revenue_col") and inferred_schema.get("revenue_col") in col_names:
+        rev_col = inferred_schema.get("revenue_col")
+    else:
+        for c in col_names:
+            if re.search(r"^(total_)?rev(enue)?(_inr)?$|^(total_)?sales(_inr)?$|^(total_)?turnover(_inr)?$|^topline$", c, re.IGNORECASE):
+                rev_col = c
+                break
+        if not rev_col:
+            for c in col_names:
+                if any(k in c.lower() for k in ["revenue", "sales", "turnover"]):
+                    rev_col = c
+                    break
+
+    # 2. Total COGS: checking columns matching cogs, cost_of_goods, cost_of_sales, cost
+    cogs_col = None
+    if inferred_schema and inferred_schema.get("cogs_col") and inferred_schema.get("cogs_col") in col_names:
+        cogs_col = inferred_schema.get("cogs_col")
+    else:
+        for c in col_names:
+            if re.search(r"^(total_)?cogs(_inr)?$|^(total_)?cost_of_goods(_inr)?$|^cost_of_sales$|^cogs$", c, re.IGNORECASE):
+                cogs_col = c
+                break
+        if not cogs_col:
+            for c in col_names:
+                if "cogs" in c.lower() or c.lower() == "cost":
+                    cogs_col = c
+                    break
+
+    # 3. All OPEX + Marketing: checking expense, opex, marketing, overhead, salaries, rent, operating_expenses
+    exp_cols = []
+    for c in col_names:
+        c_l = c.lower()
+        if c == rev_col or c == cogs_col:
+            continue
+        if any(exp in c_l for exp in ["expense", "opex", "marketing", "overhead", "salaries", "rent", "operating_expenses"]):
+            if not any(cg in c_l for cg in ["cogs", "cost_of_goods", "cost_of_sales"]):
+                exp_cols.append(c)
+
+    # 4. Total Net Profit: checking net_profit, net_income, pat, profit_after_tax
+    profit_col = None
+    for c in col_names:
+        if re.search(r"^(total_)?net_?profit(_loss)?(_inr)?$|^(total_)?net_?income(_inr)?$|^profit_after_tax$|^pat$", c, re.IGNORECASE):
+            profit_col = c
+            break
+
+    select_terms = []
+    if rev_col:
+        select_terms.append(f'COALESCE(SUM(try_cast("{rev_col}" AS DOUBLE)), 0) AS total_revenue')
+    else:
+        select_terms.append('0.0 AS total_revenue')
+
+    if cogs_col:
+        select_terms.append(f'COALESCE(SUM(try_cast("{cogs_col}" AS DOUBLE)), 0) AS total_cogs')
+    else:
+        select_terms.append('0.0 AS total_cogs')
+
+    for i, ec in enumerate(exp_cols):
+        select_terms.append(f'COALESCE(SUM(try_cast("{ec}" AS DOUBLE)), 0) AS exp_{i}')
+
+    if profit_col:
+        select_terms.append(f'COALESCE(SUM(try_cast("{profit_col}" AS DOUBLE)), 0) AS direct_profit')
+
+    sql = f'SELECT {", ".join(select_terms)} FROM "{t_name}";'
+    try:
+        df = query_dataset(t_name, sql)
         if len(df) > 0:
             row = df.to_dicts()[0]
             tot_rev = float(row.get("total_revenue") or 0)
             tot_cogs = float(row.get("total_cogs") or 0)
             tot_opex = sum(float(row.get(f"exp_{i}") or 0) for i in range(len(exp_cols)))
             tot_costs = tot_cogs + tot_opex
-            net_pl = tot_rev - tot_costs
+            if profit_col and row.get("direct_profit") is not None:
+                net_pl = float(row.get("direct_profit"))
+                if tot_rev == 0.0 and (tot_costs + net_pl) > 0:
+                    tot_rev = tot_costs + net_pl
+            else:
+                net_pl = tot_rev - tot_costs
+
             margin_pct = round((net_pl / tot_rev * 100.0), 2) if tot_rev > 0 else 0.0
-            return {
+            baseline = {
                 "total_revenue": tot_rev,
                 "total_cogs": tot_cogs,
                 "total_opex": tot_opex,
@@ -136,8 +234,12 @@ def get_authoritative_ledger_totals(
                 "net_profit_loss": net_pl,
                 "net_margin_pct": margin_pct,
             }
+            if t_name:
+                _DATASET_BASELINE_CACHE[t_name] = baseline
+            return baseline
     except Exception as e:
-        logger.warning("get_authoritative_ledger_totals failed: %s", e)
+        logger.warning("get_dataset_baseline query failed: %s", e)
+
     return {
         "total_revenue": 0.0,
         "total_cogs": 0.0,
@@ -146,6 +248,19 @@ def get_authoritative_ledger_totals(
         "net_profit_loss": 0.0,
         "net_margin_pct": 0.0,
     }
+
+
+def get_authoritative_ledger_totals(
+    table_name: str,
+    revenue_col: str,
+    cogs_col: str,
+    expense_cols: Optional[List[str]] = None,
+) -> Dict[str, float]:
+    """Query DuckDB directly for single source of truth ledger aggregations to prevent double-counting."""
+    return get_dataset_baseline(
+        con_or_table=table_name,
+        inferred_schema={"revenue_col": revenue_col, "cogs_col": cogs_col, "expense_cols": expense_cols},
+    )
 
 
 def format_pl_verdict(
@@ -1050,8 +1165,16 @@ async def run_agent_q(
         c in table_headers
         for c in ["net_profit", "net_profit_loss", "net_loss", "profit_loss", "net_income", "total_net_profit"]
     )
+    has_pl_intent = (
+        (m_plan.get("intent") == "GENERAL_INQUIRY")
+        and any(
+            w in (m_plan.get("sql_objective") or "").lower() or w in (m_plan.get("synthesis_instruction") or "").lower()
+            for w in ["profit", "loss", "revenue", "cogs", "operating expenses", "reconciliation"]
+        )
+    )
     is_pl_query = (
         has_pl_columns
+        or has_pl_intent
         or any(
             w in query.lower()
             for w in [
@@ -1473,46 +1596,127 @@ async def run_agent_q(
                 "region": "All Operations",
                 "expectedVolume": total_rev,
                 "actualBilled": total_costs,
+                "total_revenue": total_rev,
+                "total_costs": total_costs,
                 "netProfitLoss": net_profit_loss,
                 "varianceBps": int(disc_pct * 100),
                 "discrepancyPct": disc_pct,
                 "currencySymbol": curr_symbol,
+                "breakdown": rows,
+                "query_specific_results": rows,
             }
         else:
-            total_rev = sum(float(r.get("total_revenue") or r.get("revenue") or r.get("sales") or 0) for r in rows)
-            total_cogs = sum(float(r.get("total_cogs") or r.get("cogs") or r.get("cost") or 0) for r in rows)
-            total_opex = 0.0
-            for r in rows:
+            def _extract_metric_case_insensitive(r: Dict[str, Any], candidates: List[str]) -> Optional[float]:
                 for k, v in r.items():
-                    k_lower = k.lower()
-                    if any(exp in k_lower for exp in ["expense", "opex", "marketing", "overhead", "salaries", "rent"]) and k_lower not in ("total_cogs", "cogs", "cost"):
+                    k_lower = k.lower().strip()
+                    for cand in candidates:
+                        cand_l = cand.lower().strip()
+                        if k_lower == cand_l or k_lower.startswith(f"{cand_l}_") or k_lower.endswith(f"_{cand_l}") or f"_{cand_l}_" in k_lower or cand_l in k_lower:
+                            try:
+                                if v is not None:
+                                    return float(v)
+                            except (ValueError, TypeError):
+                                pass
+                return None
+
+            rev_aliases = ["total_revenue", "revenue", "sales", "turnover", "invoiced", "topline", "rev"]
+            cogs_aliases = ["total_cogs", "cogs", "cost_of_goods", "cost_of_sales", "cost"]
+            profit_aliases = ["net_profit", "net_profit_loss", "net_income", "profit_after_tax", "pat", "net_earnings"]
+
+            total_rev = 0.0
+            total_cogs = 0.0
+            total_opex = 0.0
+            extracted_profits = []
+
+            for r in rows:
+                rev_val = _extract_metric_case_insensitive(r, rev_aliases)
+                if rev_val is not None:
+                    total_rev += rev_val
+
+                cogs_val = _extract_metric_case_insensitive(r, cogs_aliases)
+                if cogs_val is not None:
+                    total_cogs += cogs_val
+
+                # OpEx: check columns containing expense, opex, marketing, overhead, salaries, rent
+                for k, v in r.items():
+                    k_lower = k.lower().strip()
+                    if any(exp in k_lower for exp in ["expense", "opex", "marketing", "overhead", "salaries", "rent"]) and not any(c in k_lower for c in ["cogs", "cost_of_goods", "cost_of_sales"]):
                         try:
-                            total_opex += float(v or 0)
+                            if v is not None:
+                                total_opex += float(v)
                         except (ValueError, TypeError):
                             pass
+
+                prof_val = _extract_metric_case_insensitive(r, profit_aliases)
+                if prof_val is not None:
+                    extracted_profits.append(prof_val)
+
             total_costs = total_cogs + total_opex
-            net_profit_loss = total_rev - total_costs
-            disc_pct = round(((total_rev - total_costs) / total_rev * 100), 2) if total_rev > 0 else 0.0
+            baseline = get_dataset_baseline(table_name=table_name, inferred_schema=inferred_schema)
+            query_specific_results = rows
+
+            # If the specific SQL query did NOT include revenue columns (e.g. marketing vs opex, expense breakdown):
+            # DO NOT calculate net_profit_loss = 0.0 - total_costs!
+            # Fall back to baseline totals:
+            if total_rev == 0.0 and baseline.get("total_revenue", 0.0) > 0:
+                total_rev = baseline["total_revenue"]
+                total_costs = baseline["total_costs"]
+                net_profit_loss = baseline["net_profit_loss"]
+                disc_pct = baseline["net_margin_pct"]
+            elif extracted_profits and (total_rev == 0.0 or total_rev < total_costs):
+                net_profit_loss = sum(extracted_profits)
+                if total_rev == 0.0:
+                    total_rev = max(total_costs + net_profit_loss, 0.0)
+                disc_pct = round(((total_rev - total_costs) / total_rev * 100), 2) if total_rev > 0 else 0.0
+            else:
+                net_profit_loss = total_rev - total_costs
+                disc_pct = round(((total_rev - total_costs) / total_rev * 100), 2) if total_rev > 0 else 0.0
+
             first_row = rows[0] if rows else {}
-            first_cat = str(first_row.get("category") or first_row.get(dimension_col) or "Portfolio")
+            first_cat = str(first_row.get("category") or first_row.get(dimension_col) or "Consolidated Operations")
+            if first_cat.lower() in ("portfolio", "none", ""):
+                first_cat = "Consolidated Operations"
 
             scanned_metrics = [c for c in table_headers if c in ("revenue", "cogs", "operating_expenses", "marketing", "units_sold", "total_revenue", "total_cogs")]
             metrics_str = ", ".join(scanned_metrics) if scanned_metrics else "ledger aggregates"
-            summary_findings = [
-                f"Ledger analysis scanned {len(rows)} reporting partitions across metrics: {metrics_str}.",
-                f"Consolidated top-line volume across partitions totaled {curr_symbol}{total_rev:,.0f}.",
-                f"Consolidated costs totaled {curr_symbol}{total_costs:,.0f} (Net Result: {curr_symbol}{net_profit_loss:,.0f}).",
-            ]
+
+            # Check if this query returned specific comparative metrics (e.g. marketing vs opex)
+            has_specific_breakdown = (
+                len(query_specific_results) == 1
+                and any("market" in h.lower() or "opex" in h.lower() or "expense" in h.lower() for h in table_headers)
+            )
+            if has_specific_breakdown:
+                metric_pairs = []
+                for k, v in query_specific_results[0].items():
+                    if isinstance(v, (int, float)):
+                        metric_pairs.append(f"{k.replace('_', ' ').title()}: {format_currency_human(float(v), curr_symbol)}")
+                metrics_summary = ", ".join(metric_pairs) if metric_pairs else metrics_str
+                summary_findings = [
+                    f"Direct inquiry calculated: {metrics_summary}.",
+                    f"Enterprise baseline revenue stands at {curr_symbol}{total_rev:,.0f} against total operating costs of {curr_symbol}{total_costs:,.0f} (Net Profit: {curr_symbol}{net_profit_loss:,.0f}).",
+                ]
+                narrative = f"Direct ledger inquiry calculated {metrics_summary} against enterprise baseline revenue of {curr_symbol}{total_rev:,.0f}."
+            else:
+                summary_findings = [
+                    f"Ledger analysis scanned {len(rows)} reporting partitions across metrics: {metrics_str}.",
+                    f"Consolidated top-line volume across partitions totaled {curr_symbol}{total_rev:,.0f}.",
+                    f"Consolidated costs totaled {curr_symbol}{total_costs:,.0f} (Net Result: {curr_symbol}{net_profit_loss:,.0f}).",
+                ]
+                narrative = f"Diagnostic inquiry evaluated {len(rows)} reporting partitions across {metrics_str} on table '{table_name}'."
+
             anomalies_detected = []
-            narrative = f"Diagnostic inquiry evaluated {len(rows)} reporting partitions across {metrics_str} on table '{table_name}'."
             anomaly_data = {
                 "region": first_cat,
                 "expectedVolume": total_rev,
                 "actualBilled": total_costs,
+                "total_revenue": total_rev,
+                "total_costs": total_costs,
                 "netProfitLoss": net_profit_loss,
                 "varianceBps": int(disc_pct * 100),
                 "discrepancyPct": disc_pct,
                 "currencySymbol": curr_symbol,
+                "breakdown": query_specific_results,
+                "query_specific_results": query_specific_results,
             }
 
     else:
@@ -1542,10 +1746,14 @@ async def run_agent_q(
                 "region": "All Operations",
                 "expectedVolume": tot_rev,
                 "actualBilled": tot_costs,
+                "total_revenue": tot_rev,
+                "total_costs": tot_costs,
+                "netProfitLoss": net_profit_val,
                 "varianceBps": int(net_margin_pct * 100),
                 "discrepancyPct": net_margin_pct,
-                "netProfitLoss": net_profit_val,
                 "currencySymbol": curr_symbol,
+                "breakdown": rows,
+                "query_specific_results": rows,
             }
         else:
             # Regional margin drop / outlier investigation
@@ -1693,6 +1901,19 @@ async def run_agent_q(
             narrative = f"{prefix} {narrative}"
         if not is_brief_requested and (m_plan.get("response_style") != "DIRECT_BINARY") and summary_findings and not summary_findings[0].startswith(prefix):
             summary_findings[0] = f"{prefix} {summary_findings[0]}"
+
+    # Final safeguard: ensure enterprise baseline KPIs are always anchored in anomaly_data
+    baseline = get_dataset_baseline(table_name=table_name, inferred_schema=inferred_schema)
+    if "total_revenue" not in anomaly_data or anomaly_data["total_revenue"] == 0:
+        anomaly_data["total_revenue"] = baseline.get("total_revenue", 0.0)
+    if "total_costs" not in anomaly_data or anomaly_data["total_costs"] == 0:
+        anomaly_data["total_costs"] = baseline.get("total_costs", 0.0)
+    if "netProfitLoss" not in anomaly_data:
+        anomaly_data["netProfitLoss"] = baseline.get("net_profit_loss", 0.0)
+    if "breakdown" not in anomaly_data:
+        anomaly_data["breakdown"] = rows
+    if "query_specific_results" not in anomaly_data:
+        anomaly_data["query_specific_results"] = rows
 
     return {
         "executed_sql": current_sql,

@@ -125,37 +125,87 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
   const firstRow = rows[0] || {};
   const rowKeys = Object.keys(firstRow);
 
+  const extractMetricFromRow = (r: Record<string, any>, patterns: RegExp[]): number | undefined => {
+    for (const [k, v] of Object.entries(r)) {
+      if (patterns.some((pat) => pat.test(k)) && v !== null && v !== undefined && !isNaN(Number(v))) {
+        return Number(v);
+      }
+    }
+    return undefined;
+  };
+
+  const revenuePatterns = [
+    /^(total_)?rev(enue)?(_inr)?$/i,
+    /^(total_)?sales(_inr)?$/i,
+    /^(total_)?turnover(_inr)?$/i,
+    /^(total_)?invoiced(_inr)?$/i,
+    /^topline$/i,
+    /revenue/i,
+  ];
+
+  const costPatterns = [
+    /^(total_)?cogs(_inr)?$/i,
+    /^(total_)?costs?(_inr)?$/i,
+    /^(total_)?expenses?(_inr)?$/i,
+    /^(total_)?opex(_inr)?$/i,
+    /cogs/i,
+  ];
+
+  const profitPatterns = [
+    /^(total_)?net_?profit(_loss)?(_inr)?$/i,
+    /^(total_)?net_?income(_inr)?$/i,
+    /^(total_)?net_?earnings(_inr)?$/i,
+    /profit_after_tax/i,
+    /^pat$/i,
+  ];
+
+  const rowRevenueSum =
+    rows.length > 0
+      ? rows.reduce((acc, r) => {
+          const val = extractMetricFromRow(r, revenuePatterns);
+          return acc + (val ?? 0);
+        }, 0)
+      : 0;
+
   const rawRevenue =
-    Number(anomalyData.expectedVolume) ||
-    Number(anomalyData.total_revenue) ||
-    (rows.length > 0
-      ? rows.reduce(
-          (acc, r) =>
-            acc +
-            (Number(
-              r.total_revenue || r.revenue || r.q2_revenue || r.actual || 0
-            )),
-          0
-        )
-      : 0);
+    (anomalyData.total_revenue !== undefined && !isNaN(Number(anomalyData.total_revenue)) && Number(anomalyData.total_revenue) > 0)
+      ? Number(anomalyData.total_revenue)
+      : (anomalyData.expectedVolume !== undefined && !isNaN(Number(anomalyData.expectedVolume)) && Number(anomalyData.expectedVolume) > 0)
+      ? Number(anomalyData.expectedVolume)
+      : rowRevenueSum > 0
+      ? rowRevenueSum
+      : 0;
+
+  const rowCostSum =
+    rows.length > 0
+      ? rows.reduce((acc, r) => {
+          const val = extractMetricFromRow(r, costPatterns);
+          return acc + (val ?? 0);
+        }, 0)
+      : 0;
 
   const rawCosts =
-    Number(anomalyData.actualBilled) ||
-    Number(anomalyData.total_costs) ||
-    (rows.length > 0
-      ? rows.reduce(
-          (acc, r) =>
-            acc +
-            (Number(
-              r.total_costs || r.cogs || r.q2_cogs || r.opex || 0
-            )),
-          0
-        )
-      : 0);
+    (anomalyData.total_costs !== undefined && !isNaN(Number(anomalyData.total_costs)) && Number(anomalyData.total_costs) > 0)
+      ? Number(anomalyData.total_costs)
+      : (anomalyData.actualBilled !== undefined && !isNaN(Number(anomalyData.actualBilled)) && Number(anomalyData.actualBilled) > 0)
+      ? Number(anomalyData.actualBilled)
+      : rowCostSum > 0
+      ? rowCostSum
+      : 0;
+
+  const rowDirectProfit =
+    rows.length > 0
+      ? rows.reduce((acc, r) => {
+          const val = extractMetricFromRow(r, profitPatterns);
+          return val !== undefined ? acc + val : acc;
+        }, 0)
+      : undefined;
 
   const netProfitLoss =
-    anomalyData.netProfitLoss !== undefined
+    anomalyData.netProfitLoss !== undefined && !isNaN(Number(anomalyData.netProfitLoss)) && isFinite(Number(anomalyData.netProfitLoss))
       ? Number(anomalyData.netProfitLoss)
+      : rowDirectProfit !== undefined && (rawRevenue === 0 || rawRevenue < rawCosts)
+      ? rowDirectProfit
       : rawRevenue - rawCosts;
 
   // Check if query is binary check or has non-comparative visual
@@ -167,14 +217,20 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
 
   // Genuine anomaly detection to decide whether to render Actionable Directive
   const hasGenuineAnomaly = Boolean(
-    strategy007 &&
-      (!isDirectBinary || (anomalyData.netProfitLoss !== undefined && anomalyData.netProfitLoss < 0))
+    strategy007?.remediation_levers &&
+      strategy007.remediation_levers.length > 0 &&
+      (anomalyData.netProfitLoss !== undefined
+        ? Number(anomalyData.netProfitLoss) < 0
+        : (netProfitLoss < 0 || (anomalyData.varianceBps !== undefined && Number(anomalyData.varianceBps) < 0)))
   );
 
   // Map Agent 007 remediation levers into ScenarioSimulator format with safe defaults
   const scenarioLevers: ScenarioLever[] | undefined = React.useMemo(() => {
-    if (!strategy007?.remediation_levers || strategy007.remediation_levers.length === 0) {
+    if (!strategy007?.remediation_levers) {
       return undefined;
+    }
+    if (strategy007.remediation_levers.length === 0) {
+      return [];
     }
     return strategy007.remediation_levers.map((lever: any, idx: number) => {
       const impactBps = Number(lever.impact_bps ?? lever.impactBps ?? lever.bps_impact ?? 100);
@@ -578,9 +634,12 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                 {/* Metric 1: Solvency / Net Status */}
                 {(() => {
                   const isProfitable = netProfitLoss >= 0;
-                  const operatingMarginPct = rawRevenue > 0
-                    ? ((rawRevenue - rawCosts) / rawRevenue) * 100
-                    : (anomalyData.discrepancyPct !== undefined ? Number(anomalyData.discrepancyPct) : 0);
+                  const operatingMarginPct =
+                    rawRevenue > 0 && isFinite(netProfitLoss)
+                      ? (netProfitLoss / rawRevenue) * 100
+                      : anomalyData.discrepancyPct !== undefined && !isNaN(Number(anomalyData.discrepancyPct))
+                      ? Number(anomalyData.discrepancyPct)
+                      : 0;
 
                   return (
                     <>
@@ -615,7 +674,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                           Total Revenue
                         </span>
                         <span className="font-mono text-base sm:text-lg font-bold text-text-primary block">
-                          {formatCurrencyHuman(rawRevenue, currSymbol)}
+                          {rawRevenue > 0 ? formatCurrencyHuman(rawRevenue, currSymbol) : "—"}
                         </span>
                         <span className="font-body text-[11px] text-text-secondary block">
                           Consolidated Realization
@@ -628,7 +687,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                           Total Costs &amp; Opex
                         </span>
                         <span className="font-mono text-base sm:text-lg font-bold text-text-primary block">
-                          {formatCurrencyHuman(rawCosts, currSymbol)}
+                          {rawCosts > 0 ? formatCurrencyHuman(rawCosts, currSymbol) : "—"}
                         </span>
                         <span className="font-body text-[11px] text-text-secondary block">
                           COGS + Opex + Marketing

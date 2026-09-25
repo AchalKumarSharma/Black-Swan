@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { BlackSwanLogo } from "@/components/ui/BlackSwanLogo";
-import { DitherDistortionImage } from "@/components/ui/DitherDistortionImage";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 
 function LoginTerminal() {
@@ -307,13 +306,11 @@ export default function LoginPage() {
 
         {/* Middle: London night visual framed in archival copper/charcoal border */}
         <div className="my-auto py-8">
-          <div className="border border-white/10 rounded-sm overflow-hidden bg-bg-surface shadow-2xl">
-            <DitherDistortionImage
-              src="/hero-illustration.jpg"
-              alt="Black Swan Financial Intelligence - Vintage City Skyline at Night"
-              className="w-full h-auto object-cover block"
-              maxTilt={4}
-              maxDistortion={8}
+          <div className="rounded-sm overflow-hidden bg-bg-surface shadow-2xl">
+            <img
+              src="/login-hero.png"
+              alt="Black Swan Terminal"
+              className="w-full h-full object-cover rounded-sm border border-white/10"
             />
           </div>
         </div>

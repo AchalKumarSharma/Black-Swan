@@ -64,19 +64,41 @@ def classify_intent_heuristic(
         return "OUT_OF_SCOPE"
 
     # Contextual resolution for follow-ups (e.g. "which product contributed the most?")
-    if conversation_history and ("contributed" in q_lower or "which" in q_lower or "what about" in q_lower):
-        if "product" in q_lower or "segment" in q_lower:
-            return "SEGMENT_BREAKDOWN"
-        if "why" in q_lower or "drop" in q_lower or "cause" in q_lower:
-            return "ANOMALY_INVESTIGATION"
+    if conversation_history:
+        ADVERSARIAL_CUES = ["believe", "prove", "proof", "facts", "figures", "evidence", "details", "sure", "confirm"]
+        if any(cue in q_lower for cue in ADVERSARIAL_CUES):
+            last_turn = conversation_history[-1] if conversation_history else {}
+            last_q = (last_turn.get("query") or "").lower()
+            last_intent = last_turn.get("intent") or ""
+            is_last_pl = (
+                any(k in last_q for k in ["profit", "loss", "profitable", "losing", "margin", "money"])
+                or last_intent in ("GENERAL_INQUIRY", "DIRECT_BINARY")
+            )
+            if is_last_pl:
+                return "GENERAL_INQUIRY"
+
+        if "contributed" in q_lower or "which" in q_lower or "what about" in q_lower:
+            if "product" in q_lower or "segment" in q_lower:
+                return "SEGMENT_BREAKDOWN"
+            if "why" in q_lower or "drop" in q_lower or "cause" in q_lower:
+                return "ANOMALY_INVESTIGATION"
+
+    analytical_terms = [
+        "what", "how much", "how many", "percentage", "ratio",
+        "breakdown", "compare", "share", "proportion", "list", "detail"
+    ]
+    is_analytical = any(w in q_lower for w in analytical_terms)
 
     # Direct ledger / profit / loss verification checks route cleanly to GENERAL_INQUIRY (Ledger Inquiry)
     # Handles direct questions (with or without conversational prefixes like "just give me a one liner answer, ")
     is_alt_inquiry = bool(re.search(r"\b(profit\s+or\s+loss|gain\s+or\s+loss|up\s+or\s+down)\b", q_lower))
     is_direct_pl_verification = (
-        is_alt_inquiry
-        or bool(re.search(r"\b(am|is|are|do|does|did|have|has)\b.*?\b(loss|losses|profitable|profit|profits|losing money|losing|incur loss|any loss)\b", q_lower))
-        or any(k in q_lower for k in ["profit or loss", "huge profit", "huge profits", "am i profitable", "facing loss", "incur loss", "any loss"])
+        not is_analytical
+        and (
+            is_alt_inquiry
+            or bool(re.search(r"\b(am|is|are|do|does|did|have|has)\b.*?\b(loss|losses|profitable|profit|profits|losing money|losing|incur loss|any loss)\b", q_lower))
+            or any(k in q_lower for k in ["profit or loss", "huge profit", "huge profits", "am i profitable", "facing loss", "incur loss", "any loss"])
+        )
     )
     is_anomaly_why = any(k in q_lower for k in ["why did", "why has", "why is", "root cause", "culprit", "drop in", "covenant", "anomaly", "spike"])
     is_explicit_forecast = any(k in q_lower for k in ["forecast", "projection", "predict", "next year", "next quarter", "future", "outlook"])
@@ -146,6 +168,12 @@ def generate_synthesis_instruction(query: str) -> str:
             "CONSTRAINT: Return strictly ONE sentence under 25 words stating only the decisive metric. No preamble, no multi-clause padding."
         )
 
+    ADVERSARIAL_CUES = ["believe", "prove", "proof", "facts", "figures", "evidence", "details", "sure", "confirm"]
+    if any(cue in q_lower for cue in ADVERSARIAL_CUES):
+        instructions.append(
+            "User requested itemized facts and figures to substantiate previous answer. Provide detailed ledger breakdown with revenue, cogs, operating expenses, and net profit."
+        )
+
     return " ".join(instructions)
 
 
@@ -153,12 +181,21 @@ def classify_response_style(query: str, intent: str) -> str:
     """Classify inquiry response style: DIRECT_BINARY vs EXPLORATORY_DETAILED."""
     q_lower = query.lower().strip()
 
+    # Explicit analytical interrogative or breakdown words: never classify as DIRECT_BINARY
+    analytical_terms = [
+        "what", "how much", "how many", "percentage", "ratio",
+        "breakdown", "compare", "share", "proportion", "list", "detail"
+    ]
+    if any(w in q_lower for w in analytical_terms):
+        return "EXPLORATORY_DETAILED"
+
     # Explicit exploratory/comparative markers
     exploratory_markers = [
         "why did", "why has", "why is", "why are", "root cause", "what caused", "cause of",
         "compare", "comparison", "between", "versus", "vs", "breakdown", "by segment",
         "by product", "by region", "decompose", "investigate", "deep dive", "explain",
-        "detailed", "walk me through", "driver of", "drivers of", "culprit"
+        "detailed", "walk me through", "driver of", "drivers of", "culprit",
+        "believe", "prove", "proof", "facts", "figures", "evidence", "details", "sure", "confirm"
     ]
     if any(marker in q_lower for marker in exploratory_markers):
         return "EXPLORATORY_DETAILED"
@@ -265,7 +302,10 @@ def get_intent_defaults(
             strategic_focus = f"Comparative breakdown of revenue and margin health across {dimension_col} segments."
 
     elif intent == "GENERAL_INQUIRY":
-        if any(k in query.lower() for k in ["loss", "losses", "profit", "net profit", "profitable", "any loss", "losing money", "losing"]):
+        if (
+            any(k in query.lower() for k in ["loss", "losses", "profit", "net profit", "profitable", "any loss", "losing money", "losing"])
+            or any(k in query.lower() for k in ["believe", "prove", "proof", "facts", "figures", "evidence", "details", "sure", "confirm"])
+        ):
             hypotheses = [
                 f"Consolidated top-line '{revenue_col}' exceeds total operating expenditures across '{dimension_col}', delivering overall enterprise profitability.",
                 f"Individual cost components (COGS, marketing, opex) have remained within budget thresholds without causing net operating deficit.",
@@ -273,7 +313,7 @@ def get_intent_defaults(
             ]
             metrics = [revenue_col, cogs_col, "total_revenue", "total_cogs", "net_profit_loss"]
             sql_objective = (
-                f"Calculate total revenue, total COGS, and all operational expenses across the dataset to determine if the business operates at a net profit or net loss."
+                f"Calculate total revenue, total COGS, and all operational expenses across the dataset to determine if the business operates at a net profit or net loss, providing detailed itemized figures."
             )
             strategic_focus = "Enterprise net profitability verification and expense solvency audit."
         else:
@@ -469,16 +509,43 @@ async def run_m_director(
 
             # Direct ledger / profit / loss verification checks route cleanly to GENERAL_INQUIRY / DIRECT_BINARY
             q_clean = query.lower().strip()
+            analytical_terms = [
+                "what", "how much", "how many", "percentage", "ratio",
+                "breakdown", "compare", "share", "proportion", "list", "detail"
+            ]
+            is_analytical = any(w in q_clean for w in analytical_terms)
+
             is_alt_inq = bool(re.search(r"\b(profit\s+or\s+loss|gain\s+or\s+loss|up\s+or\s+down)\b", q_clean))
             is_direct_pl = (
-                is_alt_inq
-                or bool(re.search(r"\b(am|is|are|do|does|did|have|has)\b.*?\b(loss|losses|profitable|profit|profits|losing money|losing|incur loss|any loss)\b", q_clean))
-                or any(k in q_clean for k in ["profit or loss", "huge profit", "huge profits", "am i profitable", "facing loss", "incur loss", "any loss"])
+                not is_analytical
+                and (
+                    is_alt_inq
+                    or bool(re.search(r"\b(am|is|are|do|does|did|have|has)\b.*?\b(loss|losses|profitable|profit|profits|losing money|losing|incur loss|any loss)\b", q_clean))
+                    or any(k in q_clean for k in ["profit or loss", "huge profit", "huge profits", "am i profitable", "facing loss", "incur loss", "any loss"])
+                )
             )
             is_why = any(k in q_clean for k in ["why did", "why has", "why is", "root cause", "culprit", "drop in", "covenant", "anomaly", "spike"])
             is_fc = any(k in q_clean for k in ["forecast", "projection", "predict", "next year", "next quarter", "future", "outlook"])
+            is_adversarial = any(cue in q_clean for cue in ["believe", "prove", "proof", "facts", "figures", "evidence", "details", "sure", "confirm"])
 
-            if is_direct_pl and not is_why and not is_fc:
+            last_turn = conversation_history[-1] if conversation_history else {}
+            last_q = (last_turn.get("query") or "").lower()
+            last_intent = last_turn.get("intent") or ""
+            is_last_pl = (
+                any(k in last_q for k in ["profit", "loss", "profitable", "losing", "margin", "money"])
+                or last_intent in ("GENERAL_INQUIRY", "DIRECT_BINARY")
+            )
+
+            if is_adversarial and conversation_history and is_last_pl:
+                intent = "GENERAL_INQUIRY"
+                response_style = "EXPLORATORY_DETAILED"
+                sql_objective = (
+                    f"Calculate total revenue, total COGS, and all operational expenses across the dataset to substantiate previous findings with complete itemized ledger facts and figures."
+                )
+                strategic_focus = "Substantiate enterprise net profitability with itemized ledger reconciliation facts and figures."
+            elif is_analytical:
+                response_style = "EXPLORATORY_DETAILED"
+            elif is_direct_pl and not is_why and not is_fc:
                 intent = "GENERAL_INQUIRY"
                 response_style = "DIRECT_BINARY"
 

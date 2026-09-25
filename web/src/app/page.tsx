@@ -21,10 +21,11 @@ export default function LandingPage() {
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/workspace?q=${encodeURIComponent(searchQuery.trim())}`);
+    const query = searchQuery.trim();
+    if (query) {
+      router.push(`/login?mode=signup&redirect=${encodeURIComponent('/workspace?q=' + encodeURIComponent(query))}`);
     } else {
-      router.push("/workspace");
+      router.push(`/login?mode=signup&redirect=${encodeURIComponent('/workspace')}`);
     }
   };
 
@@ -58,7 +59,7 @@ export default function LandingPage() {
               Home
             </Link>
             <Link
-              href="/workspace?view=reports"
+              href="/login?mode=signin&redirect=/workspace"
               className="inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-transparent text-text-secondary hover:text-text-primary hover:border-noir transition-colors"
             >
               Reports

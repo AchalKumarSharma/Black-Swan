@@ -34,6 +34,7 @@ import { DitherDistortionImage } from "@/components/ui/DitherDistortionImage";
 import { UploadDropzone } from "@/components/ingestion/UploadDropzone";
 import { ColumnMapperModal } from "@/components/ingestion/ColumnMapperModal";
 import { IngestionErrorTray } from "@/components/ingestion/IngestionErrorTray";
+import { LedgerStandbyBanner } from "@/components/workspace/LedgerStandbyBanner";
 import {
   ActiveDataset,
   UploadResponse,
@@ -738,7 +739,7 @@ function WorkspaceView() {
                     type="button"
                     disabled={!activeDataset || isRunning || !query.trim()}
                     onClick={() => handleStartAnalysis()}
-                    className={`inline-flex items-center gap-2 rounded-md px-5 py-2 font-body text-xs font-bold uppercase tracking-wider transition-colors shadow-none ${
+                    className={`inline-flex items-center gap-2 rounded-md px-5 py-2 font-body text-xs font-bold uppercase tracking-wider transition-colors shadow-none disabled:opacity-40 disabled:cursor-not-allowed ${
                       !activeDataset || isRunning || !query.trim()
                         ? "bg-bg-surface-subtle text-text-muted cursor-not-allowed border border-noir"
                         : "bg-accent-contrast text-bg-canvas hover:opacity-90 cursor-pointer"
@@ -789,12 +790,21 @@ function WorkspaceView() {
             {/* Idle State: Case 1 - NO DATASET LOADED */}
             {!isRunning && reports.length === 0 && !activeDataset && (
               <div className="space-y-6">
-                {ingestionErrors.length > 0 && (
-                  <IngestionErrorTray
-                    errors={ingestionErrors}
-                    onDismiss={() => setIngestionErrors([])}
-                  />
-                )}
+                {ingestionErrors.length > 0 &&
+                  (ingestionErrors.some(
+                    (err) =>
+                      err.field === "dataset" ||
+                      err.issue.toLowerCase().includes("no active dataset")
+                  ) ? (
+                    <LedgerStandbyBanner
+                      onDismiss={() => setIngestionErrors([])}
+                    />
+                  ) : (
+                    <IngestionErrorTray
+                      errors={ingestionErrors}
+                      onDismiss={() => setIngestionErrors([])}
+                    />
+                  ))}
                 <UploadDropzone
                   onUploadSuccess={handleUploadSuccess}
                   onError={(errs) => setIngestionErrors(errs)}
@@ -983,12 +993,21 @@ function WorkspaceView() {
                 <X className="h-4 w-4" />
               </button>
             </div>
-            {ingestionErrors.length > 0 && (
-              <IngestionErrorTray
-                errors={ingestionErrors}
-                onDismiss={() => setIngestionErrors([])}
-              />
-            )}
+            {ingestionErrors.length > 0 &&
+              (ingestionErrors.some(
+                (err) =>
+                  err.field === "dataset" ||
+                  err.issue.toLowerCase().includes("no active dataset")
+              ) ? (
+                <LedgerStandbyBanner
+                  onDismiss={() => setIngestionErrors([])}
+                />
+              ) : (
+                <IngestionErrorTray
+                  errors={ingestionErrors}
+                  onDismiss={() => setIngestionErrors([])}
+                />
+              ))}
             <UploadDropzone
               onUploadSuccess={handleUploadSuccess}
               onError={(errs) => setIngestionErrors(errs)}

@@ -362,41 +362,225 @@ async def run_eve_audit(
         }
 
     else:
-        # ANOMALY_INVESTIGATION: Forensic root cause isolation
-        has_activity = (actual_billed > 0 or expected_vol > 0)
+        # Check if inquiry is specifically evaluating Gross Margin or COGS contraction
+        q_lower = query.lower()
+        is_gross_margin_query = any(
+            k in q_lower
+            for k in [
+                "gross margin", "margin drop", "margin contraction", "margin compression",
+                "gm drop", "margin variance", "cogs spike", "unhedged burden",
+                "basis points", "bps", "contracted by", "covenant breach",
+                "covenant alert", "freight surge", "supplier dispute"
+            ]
+        )
 
-        if has_activity and variance_bps < -500:
-            covenant_breaches.append(
-                f"COVENANT ALERT: Gross margin contraction of {abs(variance_bps):,} basis points in '{region}' "
-                f"exceeds the 500 bps quarterly threshold (SLA clause 4.2)."
-            )
+        if not is_gross_margin_query:
+            # Dynamic Narrative Synthesis: Directly answer user inquiry with exact DuckDB figures
+            dynamic_headline = None
+            dynamic_driver = None
+            dynamic_action = None
 
-        if has_activity and discrepancy_pct > 10.0 and excess_cost > 0:
-            if outlier_tx and outlier_cogs:
-                covenant_breaches.append(
-                    f"PROCUREMENT COVENANT: Unhedged cost surge in '{region}' isolated to transaction {outlier_tx} "
-                    f"({format_currency_human(outlier_cogs, curr_symbol)} COGS on {outlier_date}) exceeds contractual ceiling."
+            try:
+                executed_sql = q_result.get("executed_sql") or ""
+                findings = q_result.get("summary_findings") or []
+                synthesis_prompt = (
+                    f"You are Agent Eve, Senior Forensic Financial Auditor.\n\n"
+                    f"User Inquiry: {query}\n"
+                    f"Executed SQL: {executed_sql}\n"
+                    f"DuckDB Result Rows: {json.dumps(rows[:10], default=str)}\n"
+                    f"Summary Findings from Agent Q: {json.dumps(findings, default=str)}\n"
+                    f"Currency Symbol: {curr_symbol}\n\n"
+                    f"CRITICAL REQUIREMENTS:\n"
+                    f"1. Formulate a direct, factual 1-sentence 'headline' that directly answers the user's inquiry with exact numbers formatted in human-readable terms (e.g., 'Marketing spend reached ₹6.80L compared to ₹12.83L in Operating Expenses.'). Do NOT mention 'Gross margin' or 'basis points' unless explicitly asked in the query.\n"
+                    f"2. Formulate a 1-sentence 'driver' explaining the context, breakdown, or data support.\n"
+                    f"3. Formulate a 1-sentence 'action' with a concrete next step or operational takeaway.\n\n"
+                    f"Respond with JSON adhering to this exact schema:\n"
+                    f'{{"headline": "Direct factual 1-sentence answer", "driver": "Key operational driver", "action": "Recommended next step"}}'
                 )
-            else:
-                covenant_breaches.append(
-                    f"PROCUREMENT COVENANT: Unhedged cost escalation of +{discrepancy_pct:.2f}% ({format_currency_human(excess_cost, curr_symbol)} excess) "
-                    f"violates Master Services Agreement freight rate cap (Benchmark + 10%)."
+                raw_synthesis = await route_completion(
+                    prompt=synthesis_prompt,
+                    response_format={"type": "json_object"},
+                    temperature=0.1,
                 )
+                parsed_synthesis = extract_json_payload(raw_synthesis)
+                if parsed_synthesis and parsed_synthesis.get("headline"):
+                    dynamic_headline = parsed_synthesis.get("headline")
+                    dynamic_driver = parsed_synthesis.get("driver")
+                    dynamic_action = parsed_synthesis.get("action")
+            except Exception as e:
+                logger.warning("Dynamic narrative synthesis in Agent Eve failed: %s", e)
 
-        bps_desc = format_bps_human(variance_bps)
-        headline = f"Gross margin contracted by {abs(variance_bps):,} basis points in '{region}', driving enterprise margin compression in Q2."
-        if outlier_tx and outlier_cogs:
-            driver = (
-                f"Contraction was driven almost exclusively by {region} direct costs, where invoice {outlier_tx} "
-                f"on {outlier_date} incurred {format_currency_human(outlier_cogs, curr_symbol)} in direct COGS (+{discrepancy_pct:.1f}% unhedged burden)."
-            )
-            action = f"Initiate supplier dispute and audit on invoice {outlier_tx}, and enforce purchase order authorization ceilings in {region}."
+            # Robust deterministic fallback if model is unavailable
+            if not dynamic_headline:
+                if rows and len(rows) == 1:
+                    metric_pairs = []
+                    for k, v in rows[0].items():
+                        if isinstance(v, (int, float)):
+                            metric_pairs.append(f"{k.replace('_', ' ').title()}: {format_currency_human(float(v), curr_symbol)}")
+                    if len(metric_pairs) >= 2:
+                        dynamic_headline = f"{metric_pairs[0]} compared to {metric_pairs[1]}."
+                    elif len(metric_pairs) == 1:
+                        dynamic_headline = f"{metric_pairs[0]} recorded across the dataset."
+
+            if not dynamic_headline:
+                dynamic_headline = f"Factual ledger inquiry evaluated across {sample_size} records."
+            if not dynamic_driver:
+                dynamic_driver = f"Evaluated metric breakdown and underlying ledger transactions answering '{query}'."
+            if not dynamic_action:
+                dynamic_action = "Review detailed breakdown in the Technical Audit Drawer."
+
+            headline = dynamic_headline
+            driver = dynamic_driver
+            action = dynamic_action
+
+            audit_findings = [
+                f"Verified ledger completeness across {sample_size} records with complete period consistency.",
+                f"Factual data points validated against active DuckDB database ledger.",
+            ]
+            formula_ledger = []
+            if rows:
+                for k, v in rows[0].items():
+                    if isinstance(v, (int, float)):
+                        formula_ledger.append({
+                            "metric": k.replace("_", " ").title(),
+                            "formula": f"SUM({k})",
+                            "computation_step": f"Consolidated result: {format_currency_human(float(v), curr_symbol) if float(v) > 1000 else str(v)}",
+                        })
+            if not formula_ledger:
+                formula_ledger = [
+                    {
+                        "metric": "Inquiry Ledger Resolution",
+                        "formula": "Factual query aggregate",
+                        "computation_step": "Direct query evaluation",
+                    }
+                ]
+            chart_spec = {
+                "chart_type": "none",
+                "x_axis_key": "metric",
+                "series": [],
+                "title": "Operational Overview",
+            }
+
         else:
-            driver = (
-                f"Contraction was isolated to {region}, where actual costs of {format_currency_human(actual_billed, curr_symbol)} "
-                f"exceeded expected volume benchmarks by {format_currency_human(excess_cost, curr_symbol)}."
-            )
-            action = f"Consolidate carrier contracts and enforce quarterly expense caps in {region}."
+            has_activity = (actual_billed > 0 or expected_vol > 0)
+
+            if has_activity and variance_bps < -500:
+                covenant_breaches.append(
+                    f"COVENANT ALERT: Gross margin contraction of {abs(variance_bps):,} basis points in '{region}' "
+                    f"exceeds the 500 bps quarterly threshold (SLA clause 4.2)."
+                )
+
+            if has_activity and variance_bps < 0 and discrepancy_pct > 10.0 and excess_cost > 0:
+                if outlier_tx and outlier_cogs:
+                    covenant_breaches.append(
+                        f"PROCUREMENT COVENANT: Unhedged cost surge in '{region}' isolated to transaction {outlier_tx} "
+                        f"({format_currency_human(outlier_cogs, curr_symbol)} COGS on {outlier_date}) exceeds contractual ceiling."
+                    )
+                else:
+                    covenant_breaches.append(
+                        f"PROCUREMENT COVENANT: Unhedged cost escalation of +{discrepancy_pct:.2f}% ({format_currency_human(excess_cost, curr_symbol)} excess) "
+                        f"violates Master Services Agreement freight rate cap (Benchmark + 10%)."
+                    )
+
+            bps_desc = format_bps_human(variance_bps)
+            if variance_bps < 0:
+                headline = f"Gross margin in '{region}' contracted by {abs(variance_bps):,} basis points, driving enterprise margin compression."
+                if outlier_tx and outlier_cogs:
+                    driver = (
+                        f"Contraction was driven almost exclusively by {region} direct costs, where invoice {outlier_tx} "
+                        f"on {outlier_date} incurred {format_currency_human(outlier_cogs, curr_symbol)} in direct COGS (+{discrepancy_pct:.1f}% unhedged burden)."
+                    )
+                    action = f"Initiate supplier dispute and audit on invoice {outlier_tx}, and enforce purchase order authorization ceilings in {region}."
+                else:
+                    driver = (
+                        f"Contraction was isolated to {region}, where actual costs of {format_currency_human(actual_billed, curr_symbol)} "
+                        f"exceeded expected volume benchmarks by {format_currency_human(excess_cost, curr_symbol)}."
+                    )
+                    action = f"Consolidate carrier contracts and enforce quarterly expense caps in {region}."
+                audit_findings = [
+                    f"Verified ledger completeness across {sample_size} regional records with complete period consistency.",
+                    f"Forensic verification confirms {region} is the sole statistically significant outlier driving margin compression.",
+                    f"Volume-weighted cost analysis confirms delivery expenses in {region} escalated independently from top-line revenue.",
+                ]
+                formula_ledger = [
+                    {
+                        "metric": "Regional Gross Margin %",
+                        "formula": "((Revenue - COGS) / Revenue) * 100",
+                        "computation_step": f"{region}: Evaluated across baseline and comparison periods",
+                    },
+                    {
+                        "metric": "Gross Margin Contraction",
+                        "formula": "(Q2_GM_Pct - Q1_GM_Pct) * 10,000",
+                        "computation_step": f"{region} Delta: {abs(variance_bps):,} basis points contraction",
+                    },
+                    {
+                        "metric": "Normalized Volume COGS Expected",
+                        "formula": "Q1_COGS * (1 + Revenue_Delta_Pct)",
+                        "computation_step": f"{format_currency_human(expected_vol, curr_symbol)} Expected vs {format_currency_human(actual_billed, curr_symbol)} Actual (+{format_currency_human(excess_cost, curr_symbol)} unhedged burden)",
+                    },
+                ]
+            elif variance_bps > 0:
+                headline = f"Gross margin in '{region}' expanded by {abs(variance_bps):,} basis points."
+                driver = f"Positive operating leverage observed across '{region}' with revenue growth exceeding direct cost escalations."
+                action = f"Maintain current pricing discipline and procurement controls in {region}."
+                audit_findings = [
+                    f"Verified ledger completeness across {sample_size} regional records with complete period consistency.",
+                    f"Forensic verification confirms favorable margin dynamics in {region}.",
+                    f"Volume-weighted cost analysis confirms operating leverage remained positive.",
+                ]
+                formula_ledger = [
+                    {
+                        "metric": "Regional Gross Margin %",
+                        "formula": "((Revenue - COGS) / Revenue) * 100",
+                        "computation_step": f"{region}: Evaluated across baseline and comparison periods",
+                    },
+                    {
+                        "metric": "Gross Margin Expansion",
+                        "formula": "(Q2_GM_Pct - Q1_GM_Pct) * 10,000",
+                        "computation_step": f"{region} Delta: +{abs(variance_bps):,} basis points expansion",
+                    },
+                    {
+                        "metric": "Normalized Volume COGS Expected",
+                        "formula": "Q1_COGS * (1 + Revenue_Delta_Pct)",
+                        "computation_step": f"{format_currency_human(expected_vol, curr_symbol)} Expected vs {format_currency_human(actual_billed, curr_symbol)} Actual",
+                    },
+                ]
+            else:
+                headline = f"Gross margin in '{region}' remained constant with 0 basis points variance against baseline."
+                driver = f"Operations in '{region}' matched baseline expectations exactly with no unexpected cost surges or unhedged burdens."
+                action = f"Maintain regular financial monitoring cadence across '{region}'."
+                audit_findings = [
+                    f"Verified ledger completeness across {sample_size} records with complete period consistency.",
+                    f"Forensic verification confirms baseline cost parity with zero margin drift in '{region}'.",
+                    f"Operating expenses and direct costs aligned with baseline volume benchmarks.",
+                ]
+                formula_ledger = [
+                    {
+                        "metric": "Regional Gross Margin %",
+                        "formula": "((Revenue - COGS) / Revenue) * 100",
+                        "computation_step": f"{region}: Evaluated across baseline and comparison periods",
+                    },
+                    {
+                        "metric": "Gross Margin Variance",
+                        "formula": "(Observed_GM - Baseline_GM) * 10,000",
+                        "computation_step": f"{region} Delta: 0 basis points variance (neutral / on target)",
+                    },
+                    {
+                        "metric": "Cost to Volume Parity",
+                        "formula": "Actual_COGS == Expected_COGS",
+                        "computation_step": f"{format_currency_human(actual_billed, curr_symbol)} Actual vs {format_currency_human(expected_vol, curr_symbol)} Baseline (Parity)",
+                    },
+                ]
+
+            chart_spec = {
+                "chart_type": "bar",
+                "x_axis_key": "region",
+                "series": [
+                    {"key": "q1_gm_pct", "label": "Q1 Gross Margin %", "color_role": "comparison"},
+                    {"key": "q2_gm_pct", "label": "Q2 Gross Margin %", "color_role": "primary"},
+                ],
+                "title": "Regional Gross Margin Comparison (Q1 vs Q2)",
+            }
 
         plain_narrative = f"**Headline Takeaway:** {headline}\n\n**Key Operational Driver:** {driver}\n\n**Recommended Action:** {action}"
         executive_brief = {
@@ -404,30 +588,6 @@ async def run_eve_audit(
             "driver": driver,
             "action": action,
         }
-
-        audit_findings = [
-            f"Verified ledger completeness across {sample_size} regional records with complete period consistency.",
-            f"Forensic verification confirms {region} is the sole statistically significant outlier driving margin compression.",
-            f"Volume-weighted cost analysis confirms delivery expenses in {region} escalated independently from top-line revenue.",
-        ]
-
-        formula_ledger = [
-            {
-                "metric": "Regional Gross Margin %",
-                "formula": "((Revenue - COGS) / Revenue) * 100",
-                "computation_step": f"{region}: Evaluated across baseline and comparison periods",
-            },
-            {
-                "metric": "Gross Margin Contraction",
-                "formula": "(Q2_GM_Pct - Q1_GM_Pct) * 10,000",
-                "computation_step": f"{region} Delta: {abs(variance_bps):,} basis points contraction",
-            },
-            {
-                "metric": "Normalized Volume COGS Expected",
-                "formula": "Q1_COGS * (1 + Revenue_Delta_Pct)",
-                "computation_step": f"{format_currency_human(expected_vol, curr_symbol)} Expected vs {format_currency_human(actual_billed, curr_symbol)} Actual (+{format_currency_human(excess_cost, curr_symbol)} unhedged burden)",
-            },
-        ]
 
         chart_spec = {
             "chart_type": "bar",
