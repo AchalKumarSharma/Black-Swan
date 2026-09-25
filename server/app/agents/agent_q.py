@@ -104,6 +104,159 @@ def _repair_sql(sql: str, error_msg: str, table_name: str, columns: List[str]) -
     return repaired
 
 
+def get_authoritative_ledger_totals(
+    table_name: str,
+    revenue_col: str,
+    cogs_col: str,
+    expense_cols: Optional[List[str]] = None,
+) -> Dict[str, float]:
+    """Query DuckDB directly for single source of truth ledger aggregations to prevent double-counting."""
+    exp_cols = expense_cols or []
+    exp_terms = [f'COALESCE(SUM(try_cast("{col}" AS DOUBLE)), 0) AS exp_{i}' for i, col in enumerate(exp_cols)]
+    exp_sql = (",\n    " + ",\n    ".join(exp_terms)) if exp_terms else ""
+    sql = f"""SELECT 
+        COALESCE(SUM(try_cast("{revenue_col}" AS DOUBLE)), 0) AS total_revenue,
+        COALESCE(SUM(try_cast("{cogs_col}" AS DOUBLE)), 0) AS total_cogs{exp_sql}
+    FROM "{table_name}";"""
+    try:
+        df = query_dataset(table_name, sql)
+        if len(df) > 0:
+            row = df.to_dicts()[0]
+            tot_rev = float(row.get("total_revenue") or 0)
+            tot_cogs = float(row.get("total_cogs") or 0)
+            tot_opex = sum(float(row.get(f"exp_{i}") or 0) for i in range(len(exp_cols)))
+            tot_costs = tot_cogs + tot_opex
+            net_pl = tot_rev - tot_costs
+            margin_pct = round((net_pl / tot_rev * 100.0), 2) if tot_rev > 0 else 0.0
+            return {
+                "total_revenue": tot_rev,
+                "total_cogs": tot_cogs,
+                "total_opex": tot_opex,
+                "total_costs": tot_costs,
+                "net_profit_loss": net_pl,
+                "net_margin_pct": margin_pct,
+            }
+    except Exception as e:
+        logger.warning("get_authoritative_ledger_totals failed: %s", e)
+    return {
+        "total_revenue": 0.0,
+        "total_cogs": 0.0,
+        "total_opex": 0.0,
+        "total_costs": 0.0,
+        "net_profit_loss": 0.0,
+        "net_margin_pct": 0.0,
+    }
+
+
+def format_pl_verdict(
+    query: str,
+    resp_style: str,
+    total_rev: float,
+    total_costs: float,
+    net_profit_loss: float,
+    curr_symbol: str,
+    total_cogs: float = 0.0,
+    total_opex: float = 0.0,
+    synthesis_instruction: str = "",
+) -> Tuple[List[str], str]:
+    """Format P&L findings and narrative adhering to polar vs alternative rules and brevity constraints."""
+    q_lower = query.lower().strip()
+    is_alt = bool(re.search(r"\b(profit\s+or\s+loss|gain\s+or\s+loss|up\s+or\s+down)\b", q_lower))
+    is_brief = bool(
+        re.search(r"\b(one[\s-]liner|one\s+line|briefly|short\s+answer|in\s+one\s+sentence)\b", q_lower)
+        or (synthesis_instruction and "under 25 words" in synthesis_instruction)
+    )
+
+    # Polar loss inquiry ("Am I facing loss?", "Is there any loss?", "Are we losing money?")
+    is_loss_inquiry = bool(re.search(r"\b(loss|losses|losing|deficit)\b", q_lower)) and not is_alt
+    # Polar profit inquiry ("Am i in huge profits?", "Am I profitable?", "Are we making profit?")
+    is_profit_inquiry = bool(re.search(r"\b(profit|profitable|profits|gain)\b", q_lower)) and not is_alt
+
+    disc_pct = round(((total_rev - total_costs) / total_rev * 100), 2) if total_rev > 0 else 0.0
+
+    cost_details = []
+    if total_cogs > 0:
+        cost_details.append(f"COGS: {format_currency_human(total_cogs, curr_symbol)}")
+    if total_opex > 0:
+        cost_details.append(f"Operating Expenses: {format_currency_human(total_opex, curr_symbol)}")
+    cost_summary_str = f" ({', '.join(cost_details)})" if cost_details else ""
+
+    if net_profit_loss >= 0:
+        # Business is PROFITABLE
+        if is_alt:
+            lead = f"The business generated a net profit of {format_currency_human(net_profit_loss, curr_symbol)} ({disc_pct:.2f}% margin)."
+        elif is_loss_inquiry:
+            lead = f"No. The business generated a net profit of {format_currency_human(net_profit_loss, curr_symbol)} across the evaluated period."
+        else:
+            lead = f"Yes. The business generated a net profit of {format_currency_human(net_profit_loss, curr_symbol)} ({disc_pct:.2f}% margin)."
+
+        if is_brief:
+            one_liner = f"The business generated a net profit of {format_currency_human(net_profit_loss, curr_symbol)} ({disc_pct:.2f}% margin)." if is_alt else lead
+            return [one_liner], one_liner
+
+        if resp_style == "DIRECT_BINARY":
+            lead_binary = f"The business generated a net profit of {format_currency_human(net_profit_loss, curr_symbol)} across the evaluated period." if is_alt else (
+                f"No. The business generated a net profit of {format_currency_human(net_profit_loss, curr_symbol)} across the evaluated period." if is_loss_inquiry else
+                f"Yes. The business generated a net profit of {format_currency_human(net_profit_loss, curr_symbol)} across the evaluated period."
+            )
+            findings = [
+                lead_binary,
+                f"Top-line revenue reached {format_currency_human(total_rev, curr_symbol)} against consolidated expenses of {format_currency_human(total_costs, curr_symbol)}{cost_summary_str} (net margin: {disc_pct:.2f}%).",
+                "Zero net financial loss detected across all operating divisions.",
+            ]
+            narrative = (
+                f"{lead_binary} Top-line revenue reached {format_currency_human(total_rev, curr_symbol)} against consolidated expenses of "
+                f"{format_currency_human(total_costs, curr_symbol)} (net operating margin: {disc_pct:.2f}%)."
+            )
+        else:
+            findings = [
+                f"Business is profitable overall. Total net profit recorded at {format_currency_human(net_profit_loss, curr_symbol)} across the evaluated period.",
+                f"Top-line revenue totaled {format_currency_human(total_rev, curr_symbol)} against consolidated costs of {format_currency_human(total_costs, curr_symbol)}{cost_summary_str} (net margin: {disc_pct:.2f}%).",
+                "Operational health check confirms positive operating leverage with no enterprise-level net loss.",
+            ]
+            narrative = (
+                f"Comprehensive financial audit confirms the business is profitable overall. "
+                f"Total net profit stands at {format_currency_human(net_profit_loss, curr_symbol)} on consolidated revenue of {format_currency_human(total_rev, curr_symbol)} "
+                f"(delivering a {disc_pct:.2f}% net profit margin). Aggregate operational costs totaled {format_currency_human(total_costs, curr_symbol)}, "
+                f"demonstrating healthy solvency and positive cash generation."
+            )
+    else:
+        # Business is in LOSS
+        loss_abs = abs(net_profit_loss)
+        if is_alt:
+            lead = f"The business incurred a net loss of {format_currency_human(loss_abs, curr_symbol)} ({disc_pct:.2f}% deficit margin)."
+        elif is_loss_inquiry:
+            lead = f"Yes. Net loss of {format_currency_human(loss_abs, curr_symbol)} detected across operations."
+        else:
+            lead = f"No. The business incurred a net loss of {format_currency_human(loss_abs, curr_symbol)} ({disc_pct:.2f}% deficit margin)."
+
+        if is_brief:
+            one_liner = f"The business incurred a net loss of {format_currency_human(loss_abs, curr_symbol)} ({disc_pct:.2f}% deficit margin)." if is_alt else lead
+            return [one_liner], one_liner
+
+        if resp_style == "DIRECT_BINARY":
+            findings = [
+                lead,
+                f"Consolidated expenses of {format_currency_human(total_costs, curr_symbol)} exceeded top-line revenue of {format_currency_human(total_rev, curr_symbol)} (net deficit margin: {disc_pct:.2f}%).",
+                "Immediate expense containment required to restore positive operating margin.",
+            ]
+            narrative = (
+                f"{lead} Consolidated costs of {format_currency_human(total_costs, curr_symbol)} exceeded top-line revenue of {format_currency_human(total_rev, curr_symbol)}."
+            )
+        else:
+            findings = [
+                f"Net loss detected. Total net loss recorded at {format_currency_human(loss_abs, curr_symbol)}.",
+                f"Consolidated costs of {format_currency_human(total_costs, curr_symbol)} exceeded top-line revenue of {format_currency_human(total_rev, curr_symbol)} (net deficit margin: {disc_pct:.2f}%).",
+                "Immediate operational remediation recommended to contain expense creep and restore positive margin leverage.",
+            ]
+            narrative = (
+                f"Financial audit detected an enterprise net loss of {format_currency_human(loss_abs, curr_symbol)}. "
+                f"Consolidated costs of {format_currency_human(total_costs, curr_symbol)} exceeded top-line revenue of {format_currency_human(total_rev, curr_symbol)}."
+            )
+
+    return findings, narrative
+
+
 def _build_deterministic_sql(
     intent: str,
     table_name: str,
@@ -152,6 +305,20 @@ FROM period_summary
 ORDER BY period ASC;"""
 
     elif intent == "PROFITABILITY_FORECAST":
+        is_pl_check = bool(query and any(k in query.lower() for k in ["loss", "losses", "profit", "profitable", "profits", "net profit", "any loss", "losing money", "losing", "profit or loss", "gain or loss"]) and not any(k in query.lower() for k in ["forecast", "projection", "predict", "next year", "future", "outlook"]))
+        if is_pl_check:
+            exp_selects = ""
+            exp_deductions = ""
+            if expense_cols:
+                exp_selects = "\n    " + ",\n    ".join([f'COALESCE(SUM(try_cast("{col}" AS DOUBLE)), 0) AS "total_{col.lower()}"' for col in expense_cols]) + ","
+                exp_deductions = " - " + " - ".join([f'COALESCE(SUM(try_cast("{col}" AS DOUBLE)), 0)' for col in expense_cols])
+
+            return f"""SELECT 
+    COALESCE(SUM({rev_expr}), 0) AS total_revenue,
+    COALESCE(SUM({cogs_expr}), 0) AS total_cogs,{exp_selects}
+    (COALESCE(SUM({rev_expr}), 0) - COALESCE(SUM({cogs_expr}), 0){exp_deductions}) AS net_profit_loss
+FROM "{table_name}";"""
+
         if is_date_col:
             period_expr = f"concat(strftime(try_cast(\"{period_col}\" AS DATE), '%Y-Q'), quarter(try_cast(\"{period_col}\" AS DATE)))"
             where_clause = f'WHERE try_cast("{period_col}" AS DATE) IS NOT NULL'
@@ -204,7 +371,7 @@ GROUP BY "{dimension_col}"
 ORDER BY revenue DESC;"""
 
     elif intent == "GENERAL_INQUIRY":
-        if query and any(k in query.lower() for k in ["loss", "profitable", "net profit", "any loss", "losing money", "losing"]):
+        if query and any(k in query.lower() for k in ["loss", "losses", "profit", "profitable", "profits", "net profit", "any loss", "losing money", "losing", "profit or loss", "gain or loss"]):
             exp_selects = ""
             exp_deductions = ""
             if expense_cols:
@@ -228,7 +395,7 @@ GROUP BY "{dimension_col}"
 ORDER BY total_revenue DESC;"""
 
     else:  # ANOMALY_INVESTIGATION
-        if query and any(k in query.lower() for k in ["loss", "profitable", "net profit", "any loss", "losing money", "losing"]):
+        if query and any(k in query.lower() for k in ["loss", "losses", "profit", "profitable", "profits", "net profit", "any loss", "losing money", "losing", "profit or loss", "gain or loss"]):
             exp_selects = ""
             exp_deductions = ""
             if expense_cols:
@@ -345,7 +512,10 @@ async def _generate_sql_with_llm(
         f"       Q2 condition: {q2_cond}\n"
         f"   - PROFITABILITY_FORECAST: Return chronological time-series rows grouped by period (e.g., SELECT concat(strftime(try_cast(\"{period_col}\" AS DATE), '%Y-Q'), quarter(try_cast(\"{period_col}\" AS DATE))) AS period, SUM(\"{revenue_col}\") AS revenue, SUM(\"{cogs_col}\") AS cogs, (SUM(\"{revenue_col}\") - SUM(\"{cogs_col}\")) AS gross_profit, ROUND(((SUM(\"{revenue_col}\") - SUM(\"{cogs_col}\")) / NULLIF(SUM(\"{revenue_col}\"), 0)) * 100, 2) AS gross_margin_pct FROM \"{table_name}\" WHERE try_cast(\"{period_col}\" AS DATE) IS NOT NULL GROUP BY 1 ORDER BY 1). Do NOT collapse all periods into a single aggregate forecast row.\n"
         f"{seg_guideline}"
-        f"   - GENERAL_INQUIRY: Write a relevant aggregation query answering the user's inquiry.\n\n"
+        f"   - GENERAL_INQUIRY:\n"
+        f"     * For profit/loss inquiries (e.g. 'am i in profit or loss', 'am i in huge profits', 'is there any loss', 'profitability check'): Calculate overall total_revenue, total_cogs, other expense columns (e.g. Marketing, Operating Expenses), and compute (total_revenue - total_costs) AS net_profit_loss across the entire dataset table.\n"
+        f"       For example: SELECT SUM(\"{revenue_col}\") AS total_revenue, SUM(\"{cogs_col}\") AS total_cogs, (SUM(\"{revenue_col}\") - SUM(\"{cogs_col}\"){exp_example}) AS net_profit_loss FROM \"{table_name}\";\n"
+        f"     * Otherwise: Write a relevant aggregation query answering the user's inquiry.\n\n"
         f"Return ONLY the raw executable SQL query string, with no markdown, backticks, or comments."
     )
 
@@ -887,7 +1057,8 @@ async def run_agent_q(
             for w in [
                 "loss", "losses", "profitable", "profit or loss", "net profit", "net loss",
                 "making profit", "make profit", "incur loss", "any loss", "losing money",
-                "losing", "lose money", "am i facing loss", "am i profitable", "are we losing money"
+                "losing", "lose money", "am i facing loss", "am i profitable", "are we losing money",
+                "profit", "profits", "huge profit", "huge profits"
             ]
         )
     )
@@ -972,141 +1143,176 @@ async def run_agent_q(
             }
 
     elif intent == "PROFITABILITY_FORECAST":
-        rev_vals = [_extract_metric(r, ["revenue", "total_revenue", "revenue_inr", "sales"]) for r in rows]
-        cogs_vals = [_extract_metric(r, ["cogs", "total_cogs", "cogs_inr", "cost"]) for r in rows]
-        gp_vals = [
-            _extract_metric(r, ["gross_profit"]) or (rev_vals[i] - cogs_vals[i])
-            for i, r in enumerate(rows)
-        ]
-        total_rev = sum(rev_vals)
-        total_gp = sum(gp_vals)
-        avg_gm_pct = (total_gp / total_rev * 100.0) if total_rev > 0 else 0.0
+        is_explicit_forecast = any(k in query.lower() for k in [
+            "forecast", "projection", "predict", "next year", "next quarter", "future", "outlook", "run-rate", "run rate"
+        ])
+        if is_pl_query and not is_explicit_forecast:
+            ledger_totals = get_authoritative_ledger_totals(table_name, revenue_col, cogs_col, expense_cols)
+            total_rev = ledger_totals["total_revenue"]
+            total_cogs = ledger_totals["total_cogs"]
+            total_opex = ledger_totals["total_opex"]
+            total_costs = total_cogs + total_opex
+            net_profit_loss = total_rev - total_costs
+            disc_pct = ledger_totals["net_margin_pct"]
+            resp_style = m_plan.get("response_style") or "DIRECT_BINARY"
 
-        n = len(rows)
-        first_period = _extract_period(rows[0]) if rows else "Historical"
-        last_period = _extract_period(rows[-1]) if rows else "Current"
-
-        # Check for precomputed LLM forecast metrics
-        precomputed_rev = None
-        precomputed_growth = None
-        precomputed_gp = None
-        if rows:
-            r0 = rows[0]
-            for k in ["projected_next_year_revenue", "projected_revenue", "forecast_revenue", "projected_annual_revenue", "forecasted_revenue"]:
-                v = _extract_metric(r0, [k])
-                if v > 0:
-                    precomputed_rev = v
-                    break
-            for k in ["avg_qoq_growth_rate", "growth_rate", "projected_growth_pct", "growth_pct", "qoq_growth"]:
-                if k in r0 and r0[k] is not None:
-                    try:
-                        precomputed_growth = float(r0[k])
-                        break
-                    except (ValueError, TypeError):
-                        pass
-            for k in ["projected_gross_profit", "forecast_gross_profit", "projected_gp"]:
-                v = _extract_metric(r0, [k])
-                if v > 0:
-                    precomputed_gp = v
-                    break
-
-        # Determine frequency (quarterly = 4, monthly = 12)
-        periods_per_year = 4
-        if any("q" in str(r.get("period", "")).lower() for r in rows) or n <= 4:
-            periods_per_year = 4
-        elif n > 4:
-            periods_per_year = 12
-
-        # Linear trend extrapolation or precomputed fallback
-        if n >= 2:
-            x_vals = list(range(n))
-            x_mean = (n - 1) / 2.0
-            y_mean = sum(rev_vals) / float(n)
-            numerator = sum((i - x_mean) * (rev_vals[i] - y_mean) for i in range(n))
-            denominator = sum((i - x_mean) ** 2 for i in range(n))
-            slope = (numerator / denominator) if denominator > 0 else 0.0
-            intercept = y_mean - (slope * x_mean)
-
-            # Extrapolate for the next annual cycle (next periods_per_year periods)
-            projected_period_revs = [max(0.0, intercept + slope * (n + k)) for k in range(periods_per_year)]
-            projected_rev_annual = round(sum(projected_period_revs), 0)
-
-            # Annualized historical baseline
-            annualized_baseline = round(y_mean * periods_per_year, 0)
-            proj_growth_pct = round(
-                ((projected_rev_annual - annualized_baseline) / annualized_baseline) * 100.0, 2
-            ) if annualized_baseline > 0 else 0.0
-
-            # Period-over-period velocity between last two periods
-            pop_growth = round(
-                ((rev_vals[-1] - rev_vals[-2]) / rev_vals[-2]) * 100.0, 2
-            ) if rev_vals[-2] > 0 else 0.0
-
-            if precomputed_rev is not None:
-                projected_rev_annual = round(precomputed_rev, 0)
-            if precomputed_growth is not None:
-                proj_growth_pct = round(precomputed_growth, 2)
-            if precomputed_gp is not None:
-                projected_gp_annual = round(precomputed_gp, 0)
-            else:
-                projected_gp_annual = round(projected_rev_annual * (avg_gm_pct / 100.0), 0)
-        else:
-            single_val = rev_vals[0] if rev_vals else 0.0
-            annualized_baseline = round(single_val * periods_per_year, 0)
-            if precomputed_rev is not None:
-                projected_rev_annual = round(precomputed_rev, 0)
-                proj_growth_pct = round(precomputed_growth, 2) if precomputed_growth is not None else (
-                    round(((projected_rev_annual - annualized_baseline) / annualized_baseline) * 100.0, 2)
-                    if annualized_baseline > 0 else 0.0
-                )
-                pop_growth = proj_growth_pct
-                projected_gp_annual = round(precomputed_gp, 0) if precomputed_gp is not None else round(projected_rev_annual * (avg_gm_pct / 100.0), 0)
-            else:
-                projected_rev_annual = annualized_baseline
-                proj_growth_pct = 0.0
-                pop_growth = 0.0
-                slope = 0.0
-                projected_gp_annual = round(projected_rev_annual * (avg_gm_pct / 100.0), 0)
-
-        baseline_desc = (
-            f"Historical Baseline: Extrapolated from {n} observed reporting period(s) ({first_period} to {last_period}) with latest period revenue of {curr_symbol}{rev_vals[-1]:,.0f} (velocity: {pop_growth:+.2f}%)."
-            if n >= 2
-            else f"Historical Baseline: Extrapolated from single reporting period ({first_period}) with baseline revenue of {curr_symbol}{rev_vals[0]:,.0f}."
-            if rev_vals
-            else "Historical Baseline: Initial operational dataset baseline."
-        )
-
-        summary_findings = [
-            f"[PROJECTION ESTIMATE] Expected annual revenue next year is projected at {curr_symbol}{projected_rev_annual:,.0f} ({proj_growth_pct:+.2f}% vs annualized baseline of {curr_symbol}{annualized_baseline:,.0f}).",
-            f"[PROJECTION ESTIMATE] Expected gross profit next year is projected at {curr_symbol}{projected_gp_annual:,.0f} based on sustained {avg_gm_pct:.2f}% gross margin discipline.",
-            baseline_desc,
-            "Projection Methodology: Linear econometric trend extrapolation from historical period-over-period data. This is an analytical estimate subject to pipeline execution and macroeconomic conditions.",
-        ]
-        anomalies_detected = [
-            {
-                "field": "Expected Revenue Next Year [ESTIMATE]",
-                "expected": annualized_baseline,
-                "actual": projected_rev_annual,
-                "delta_pct": proj_growth_pct,
-                "direction": "favorable" if proj_growth_pct >= 0 else "unfavorable",
-                "cause": f"Linear trend extrapolation ({proj_growth_pct:+.2f}% forward growth based on historical velocity)",
+            summary_findings, narrative = format_pl_verdict(
+                query=query,
+                resp_style=resp_style,
+                total_rev=total_rev,
+                total_costs=total_costs,
+                net_profit_loss=net_profit_loss,
+                curr_symbol=curr_symbol,
+                total_cogs=total_cogs,
+                total_opex=total_opex,
+                synthesis_instruction=m_plan.get("synthesis_instruction") or "",
+            )
+            anomalies_detected = []
+            anomaly_data = {
+                "region": "All Operations",
+                "expectedVolume": total_rev,
+                "actualBilled": total_costs,
+                "netProfitLoss": net_profit_loss,
+                "varianceBps": int(disc_pct * 100),
+                "discrepancyPct": disc_pct,
+                "currencySymbol": curr_symbol,
             }
-        ]
-        narrative = (
-            f"[PROJECTION ESTIMATE] Forward financial extrapolation on DuckDB table '{table_name}' projects "
-            f"expected annual revenue next year at {curr_symbol}{projected_rev_annual:,.0f}, reflecting a {proj_growth_pct:+.2f}% trajectory "
-            f"over the annualized baseline of {curr_symbol}{annualized_baseline:,.0f}. Expected gross profit is forecasted at "
-            f"{curr_symbol}{projected_gp_annual:,.0f} with an estimated gross margin of {avg_gm_pct:.2f}%. "
-            f"(Analytical projection derived from historical period-over-period run rates, not historical fact)."
-        )
-        anomaly_data = {
-            "region": "Expected Next Year [ESTIMATE]",
-            "expectedVolume": annualized_baseline,
-            "actualBilled": projected_rev_annual,
-            "varianceBps": int(proj_growth_pct * 100),
-            "discrepancyPct": proj_growth_pct,
-            "currencySymbol": curr_symbol,
-        }
+        else:
+            rev_vals = [_extract_metric(r, ["revenue", "total_revenue", "revenue_inr", "sales"]) for r in rows]
+            cogs_vals = [_extract_metric(r, ["cogs", "total_cogs", "cogs_inr", "cost"]) for r in rows]
+            gp_vals = [
+                _extract_metric(r, ["gross_profit"]) or (rev_vals[i] - cogs_vals[i])
+                for i, r in enumerate(rows)
+            ]
+            total_rev = sum(rev_vals)
+            total_gp = sum(gp_vals)
+            avg_gm_pct = (total_gp / total_rev * 100.0) if total_rev > 0 else 0.0
+
+            n = len(rows)
+            first_period = _extract_period(rows[0]) if rows else "Historical"
+            last_period = _extract_period(rows[-1]) if rows else "Current"
+
+            # Check for precomputed LLM forecast metrics
+            precomputed_rev = None
+            precomputed_growth = None
+            precomputed_gp = None
+            if rows:
+                r0 = rows[0]
+                for k in ["projected_next_year_revenue", "projected_revenue", "forecast_revenue", "projected_annual_revenue", "forecasted_revenue"]:
+                    v = _extract_metric(r0, [k])
+                    if v > 0:
+                        precomputed_rev = v
+                        break
+                for k in ["avg_qoq_growth_rate", "growth_rate", "projected_growth_pct", "growth_pct", "qoq_growth"]:
+                    if k in r0 and r0[k] is not None:
+                        try:
+                            precomputed_growth = float(r0[k])
+                            break
+                        except (ValueError, TypeError):
+                            pass
+                for k in ["projected_gross_profit", "forecast_gross_profit", "projected_gp"]:
+                    v = _extract_metric(r0, [k])
+                    if v > 0:
+                        precomputed_gp = v
+                        break
+
+            # Determine frequency (quarterly = 4, monthly = 12)
+            periods_per_year = 4
+            if any("q" in str(r.get("period", "")).lower() for r in rows) or n <= 4:
+                periods_per_year = 4
+            elif n > 4:
+                periods_per_year = 12
+
+            # Linear trend extrapolation or precomputed fallback
+            if n >= 2:
+                x_vals = list(range(n))
+                x_mean = (n - 1) / 2.0
+                y_mean = sum(rev_vals) / float(n)
+                numerator = sum((i - x_mean) * (rev_vals[i] - y_mean) for i in range(n))
+                denominator = sum((i - x_mean) ** 2 for i in range(n))
+                slope = (numerator / denominator) if denominator > 0 else 0.0
+                intercept = y_mean - (slope * x_mean)
+
+                # Extrapolate for the next annual cycle (next periods_per_year periods)
+                projected_period_revs = [max(0.0, intercept + slope * (n + k)) for k in range(periods_per_year)]
+                projected_rev_annual = round(sum(projected_period_revs), 0)
+
+                # Annualized historical baseline
+                annualized_baseline = round(y_mean * periods_per_year, 0)
+                proj_growth_pct = round(
+                    ((projected_rev_annual - annualized_baseline) / annualized_baseline) * 100.0, 2
+                ) if annualized_baseline > 0 else 0.0
+
+                # Period-over-period velocity between last two periods
+                pop_growth = round(
+                    ((rev_vals[-1] - rev_vals[-2]) / rev_vals[-2]) * 100.0, 2
+                ) if rev_vals[-2] > 0 else 0.0
+
+                if precomputed_rev is not None:
+                    projected_rev_annual = round(precomputed_rev, 0)
+                if precomputed_growth is not None:
+                    proj_growth_pct = round(precomputed_growth, 2)
+                if precomputed_gp is not None:
+                    projected_gp_annual = round(precomputed_gp, 0)
+                else:
+                    projected_gp_annual = round(projected_rev_annual * (avg_gm_pct / 100.0), 0)
+            else:
+                single_val = rev_vals[0] if rev_vals else 0.0
+                annualized_baseline = round(single_val * periods_per_year, 0)
+                if precomputed_rev is not None:
+                    projected_rev_annual = round(precomputed_rev, 0)
+                    proj_growth_pct = round(precomputed_growth, 2) if precomputed_growth is not None else (
+                        round(((projected_rev_annual - annualized_baseline) / annualized_baseline) * 100.0, 2)
+                        if annualized_baseline > 0 else 0.0
+                    )
+                    pop_growth = proj_growth_pct
+                    projected_gp_annual = round(precomputed_gp, 0) if precomputed_gp is not None else round(projected_rev_annual * (avg_gm_pct / 100.0), 0)
+                else:
+                    projected_rev_annual = annualized_baseline
+                    proj_growth_pct = 0.0
+                    pop_growth = 0.0
+                    slope = 0.0
+                    projected_gp_annual = round(projected_rev_annual * (avg_gm_pct / 100.0), 0)
+
+            baseline_desc = (
+                f"Historical Baseline: Extrapolated from {n} observed reporting period(s) ({first_period} to {last_period}) with latest period revenue of {curr_symbol}{rev_vals[-1]:,.0f} (velocity: {pop_growth:+.2f}%)."
+                if n >= 2
+                else f"Historical Baseline: Extrapolated from single reporting period ({first_period}) with baseline revenue of {curr_symbol}{rev_vals[0]:,.0f}."
+                if rev_vals
+                else "Historical Baseline: Initial operational dataset baseline."
+            )
+
+            summary_findings = [
+                f"[PROJECTION ESTIMATE] Expected annual revenue next year is projected at {curr_symbol}{projected_rev_annual:,.0f} ({proj_growth_pct:+.2f}% vs annualized baseline of {curr_symbol}{annualized_baseline:,.0f}).",
+                f"[PROJECTION ESTIMATE] Expected gross profit next year is projected at {curr_symbol}{projected_gp_annual:,.0f} based on sustained {avg_gm_pct:.2f}% gross margin discipline.",
+                baseline_desc,
+                "Projection Methodology: Linear econometric trend extrapolation from historical period-over-period data. This is an analytical estimate subject to pipeline execution and macroeconomic conditions.",
+            ]
+            anomalies_detected = [
+                {
+                    "field": "Expected Revenue Next Year [ESTIMATE]",
+                    "expected": annualized_baseline,
+                    "actual": projected_rev_annual,
+                    "delta_pct": proj_growth_pct,
+                    "direction": "favorable" if proj_growth_pct >= 0 else "unfavorable",
+                    "cause": f"Linear trend extrapolation ({proj_growth_pct:+.2f}% forward growth based on historical velocity)",
+                }
+            ]
+            narrative = (
+                f"[PROJECTION ESTIMATE] Forward financial extrapolation on DuckDB table '{table_name}' projects "
+                f"expected annual revenue next year at {curr_symbol}{projected_rev_annual:,.0f}, reflecting a {proj_growth_pct:+.2f}% trajectory "
+                f"over the annualized baseline of {curr_symbol}{annualized_baseline:,.0f}. Expected gross profit is forecasted at "
+                f"{curr_symbol}{projected_gp_annual:,.0f} with an estimated gross margin of {avg_gm_pct:.2f}%. "
+                f"(Analytical projection derived from historical period-over-period run rates, not historical fact)."
+            )
+            anomaly_data = {
+                "region": "Expected Next Year [ESTIMATE]",
+                "expectedVolume": annualized_baseline,
+                "actualBilled": projected_rev_annual,
+                "varianceBps": int(proj_growth_pct * 100),
+                "discrepancyPct": proj_growth_pct,
+                "currencySymbol": curr_symbol,
+            }
 
     elif intent == "SEGMENT_BREAKDOWN":
         total_rev = sum(float(r.get("revenue") or 0) for r in rows)
@@ -1241,117 +1447,27 @@ async def run_agent_q(
             }
 
     elif intent == "GENERAL_INQUIRY":
-        # Extract revenue, cogs, and opex from query rows or query DuckDB directly
-        total_rev = sum(float(r.get("total_revenue") or r.get("revenue") or r.get("sales") or 0) for r in rows)
-        total_cogs = sum(float(r.get("total_cogs") or r.get("cogs") or r.get("cost") or 0) for r in rows)
-        total_opex = 0.0
-        for r in rows:
-            for k, v in r.items():
-                k_lower = k.lower()
-                if any(exp in k_lower for exp in ["expense", "opex", "marketing", "overhead", "salaries", "rent"]) and k_lower not in ("total_cogs", "cogs", "cost"):
-                    try:
-                        total_opex += float(v or 0)
-                    except (ValueError, TypeError):
-                        pass
-
-        # Check if rows contained net_profit_loss directly
-        net_pl_from_rows = None
-        for r in rows:
-            for k in ["net_profit_loss", "net_profit", "net_income", "profit_loss"]:
-                if k in r and r[k] is not None:
-                    try:
-                        net_pl_from_rows = float(r[k])
-                        break
-                    except (ValueError, TypeError):
-                        pass
-            if net_pl_from_rows is not None:
-                break
-
-        # Fallback to direct DuckDB aggregates if query didn't return cost columns
-        if total_rev == 0 or (total_cogs == 0 and total_opex == 0):
-            try:
-                exp_terms = [f'COALESCE(SUM(try_cast("{col}" AS DOUBLE)), 0) AS "{col.lower()}"' for col in (expense_cols or [])]
-                exp_sql = (",\n    " + ",\n    ".join(exp_terms)) if exp_terms else ""
-                fallback_df = query_dataset(
-                    table_name,
-                    f"""SELECT 
-                        COALESCE(SUM(try_cast("{revenue_col}" AS DOUBLE)), 0) AS total_revenue,
-                        COALESCE(SUM(try_cast("{cogs_col}" AS DOUBLE)), 0) AS total_cogs{exp_sql}
-                    FROM "{table_name}";"""
-                )
-                if len(fallback_df) > 0:
-                    fb_row = fallback_df.to_dicts()[0]
-                    if total_rev == 0:
-                        total_rev = float(fb_row.get("total_revenue", 0))
-                    if total_cogs == 0:
-                        total_cogs = float(fb_row.get("total_cogs", 0))
-                    for col in (expense_cols or []):
-                        total_opex += float(fb_row.get(col.lower(), 0))
-            except Exception as e:
-                logger.warning("Could not query aggregate revenue and costs from DuckDB: %s", e)
-
-        total_costs = total_cogs + total_opex
-        net_profit_loss = net_pl_from_rows if net_pl_from_rows is not None else (total_rev - total_costs)
-        disc_pct = round(((total_rev - total_costs) / total_rev * 100), 2) if total_rev > 0 else 0.0
-
-        first_row = rows[0] if rows else {}
-        first_cat = str(first_row.get("category") or first_row.get(dimension_col) or "Portfolio")
-        resp_style = m_plan.get("response_style") or "DIRECT_BINARY"
-
         if is_pl_query:
-            if net_profit_loss >= 0:
-                cost_details = []
-                if total_cogs > 0:
-                    cost_details.append(f"COGS: {format_currency_human(total_cogs, curr_symbol)}")
-                if total_opex > 0:
-                    cost_details.append(f"Operating Expenses: {format_currency_human(total_opex, curr_symbol)}")
-                cost_summary_str = f" ({', '.join(cost_details)})" if cost_details else ""
+            ledger_totals = get_authoritative_ledger_totals(table_name, revenue_col, cogs_col, expense_cols)
+            total_rev = ledger_totals["total_revenue"]
+            total_cogs = ledger_totals["total_cogs"]
+            total_opex = ledger_totals["total_opex"]
+            total_costs = total_cogs + total_opex
+            net_profit_loss = total_rev - total_costs
+            disc_pct = ledger_totals["net_margin_pct"]
+            resp_style = m_plan.get("response_style") or "DIRECT_BINARY"
 
-                if resp_style == "DIRECT_BINARY":
-                    summary_findings = [
-                        f"No. The business generated a net profit of {format_currency_human(net_profit_loss, curr_symbol)} across the evaluated period.",
-                        f"Top-line revenue reached {format_currency_human(total_rev, curr_symbol)} against consolidated expenses of {format_currency_human(total_costs, curr_symbol)}{cost_summary_str} (net margin: {disc_pct:.2f}%).",
-                        "Zero net financial loss detected across all operating divisions.",
-                    ]
-                    narrative = (
-                        f"No. The company is profitable with a net profit of {format_currency_human(net_profit_loss, curr_symbol)} in the evaluated period. "
-                        f"Revenue reached {format_currency_human(total_rev, curr_symbol)} against total expenses of {format_currency_human(total_costs, curr_symbol)} "
-                        f"(net operating margin: {disc_pct:.2f}%)."
-                    )
-                else:
-                    summary_findings = [
-                        f"Business is profitable overall. Total net profit recorded at {format_currency_human(net_profit_loss, curr_symbol)} across the evaluated period.",
-                        f"Top-line revenue totaled {format_currency_human(total_rev, curr_symbol)} against consolidated costs of {format_currency_human(total_costs, curr_symbol)}{cost_summary_str} (net margin: {disc_pct:.2f}%).",
-                        "Operational health check confirms positive operating leverage with no enterprise-level net loss.",
-                    ]
-                    narrative = (
-                        f"Comprehensive financial audit confirms the business is profitable overall. "
-                        f"Total net profit stands at {format_currency_human(net_profit_loss, curr_symbol)} on consolidated revenue of {format_currency_human(total_rev, curr_symbol)} "
-                        f"(delivering a {disc_pct:.2f}% net profit margin). Aggregate operational costs totaled {format_currency_human(total_costs, curr_symbol)}, "
-                        f"demonstrating healthy solvency and positive cash generation."
-                    )
-            else:
-                loss_abs = abs(net_profit_loss)
-                if resp_style == "DIRECT_BINARY":
-                    summary_findings = [
-                        f"Yes. Net loss of {format_currency_human(loss_abs, curr_symbol)} detected across operations.",
-                        f"Consolidated expenses of {format_currency_human(total_costs, curr_symbol)} exceeded top-line revenue of {format_currency_human(total_rev, curr_symbol)} (net deficit margin: {disc_pct:.2f}%).",
-                        "Immediate expense containment required to restore positive operating margin.",
-                    ]
-                    narrative = (
-                        f"Yes. An enterprise net loss of {format_currency_human(loss_abs, curr_symbol)} was detected. "
-                        f"Total costs of {format_currency_human(total_costs, curr_symbol)} exceeded revenue of {format_currency_human(total_rev, curr_symbol)}."
-                    )
-                else:
-                    summary_findings = [
-                        f"Net loss detected. Total net loss recorded at {format_currency_human(loss_abs, curr_symbol)}.",
-                        f"Consolidated costs of {format_currency_human(total_costs, curr_symbol)} exceeded top-line revenue of {format_currency_human(total_rev, curr_symbol)} (net deficit margin: {disc_pct:.2f}%).",
-                        "Immediate operational remediation recommended to contain expense creep and restore positive margin leverage.",
-                    ]
-                    narrative = (
-                        f"Financial audit detected an enterprise net loss of {format_currency_human(loss_abs, curr_symbol)}. "
-                        f"Consolidated costs of {format_currency_human(total_costs, curr_symbol)} exceeded top-line revenue of {format_currency_human(total_rev, curr_symbol)}."
-                    )
+            summary_findings, narrative = format_pl_verdict(
+                query=query,
+                resp_style=resp_style,
+                total_rev=total_rev,
+                total_costs=total_costs,
+                net_profit_loss=net_profit_loss,
+                curr_symbol=curr_symbol,
+                total_cogs=total_cogs,
+                total_opex=total_opex,
+                synthesis_instruction=m_plan.get("synthesis_instruction") or "",
+            )
             anomalies_detected = []
             anomaly_data = {
                 "region": "All Operations",
@@ -1363,6 +1479,23 @@ async def run_agent_q(
                 "currencySymbol": curr_symbol,
             }
         else:
+            total_rev = sum(float(r.get("total_revenue") or r.get("revenue") or r.get("sales") or 0) for r in rows)
+            total_cogs = sum(float(r.get("total_cogs") or r.get("cogs") or r.get("cost") or 0) for r in rows)
+            total_opex = 0.0
+            for r in rows:
+                for k, v in r.items():
+                    k_lower = k.lower()
+                    if any(exp in k_lower for exp in ["expense", "opex", "marketing", "overhead", "salaries", "rent"]) and k_lower not in ("total_cogs", "cogs", "cost"):
+                        try:
+                            total_opex += float(v or 0)
+                        except (ValueError, TypeError):
+                            pass
+            total_costs = total_cogs + total_opex
+            net_profit_loss = total_rev - total_costs
+            disc_pct = round(((total_rev - total_costs) / total_rev * 100), 2) if total_rev > 0 else 0.0
+            first_row = rows[0] if rows else {}
+            first_cat = str(first_row.get("category") or first_row.get(dimension_col) or "Portfolio")
+
             scanned_metrics = [c for c in table_headers if c in ("revenue", "cogs", "operating_expenses", "marketing", "units_sold", "total_revenue", "total_cogs")]
             metrics_str = ", ".join(scanned_metrics) if scanned_metrics else "ledger aggregates"
             summary_findings = [
@@ -1383,138 +1516,37 @@ async def run_agent_q(
             }
 
     else:
-        # Check if query calculated net profit / loss or overall financial aggregates
-        pl_row = rows[0] if rows else {}
-        net_profit_val = None
-        for k in ["net_profit_loss", "net_profit", "net_income", "profit_loss", "net_loss", "total_net_profit", "total_profit"]:
-            if k in pl_row and pl_row[k] is not None:
-                try:
-                    net_profit_val = float(pl_row[k])
-                    break
-                except (ValueError, TypeError):
-                    pass
-
-        # If not explicitly named, check if we have revenue and cost aggregates
-        tot_rev = _extract_metric(pl_row, ["total_revenue", "revenue", "revenue_inr", "sales"])
-        tot_cogs = _extract_metric(pl_row, ["total_cogs", "cogs", "cogs_inr", "cost"])
-        tot_opex = _extract_metric(pl_row, ["operating_expenses", "opex", "operating_expenses_inr"])
-        tot_mkt = _extract_metric(pl_row, ["marketing", "marketing_inr", "mkt"])
-        tot_costs = tot_cogs + tot_opex + tot_mkt
-
-        if is_pl_query and (tot_rev == 0 or (tot_cogs == 0 and tot_opex == 0)):
-            try:
-                exp_terms = [f'COALESCE(SUM(try_cast("{col}" AS DOUBLE)), 0) AS "{col.lower()}"' for col in (expense_cols or [])]
-                exp_sql = (",\n    " + ",\n    ".join(exp_terms)) if exp_terms else ""
-                fallback_df = query_dataset(
-                    table_name,
-                    f"""SELECT 
-                        COALESCE(SUM(try_cast("{revenue_col}" AS DOUBLE)), 0) AS total_revenue,
-                        COALESCE(SUM(try_cast("{cogs_col}" AS DOUBLE)), 0) AS total_cogs{exp_sql}
-                    FROM "{table_name}";"""
-                )
-                if len(fallback_df) > 0:
-                    fb_row = fallback_df.to_dicts()[0]
-                    if tot_rev == 0:
-                        tot_rev = float(fb_row.get("total_revenue", 0))
-                    if tot_cogs == 0:
-                        tot_cogs = float(fb_row.get("total_cogs", 0))
-                    for col in (expense_cols or []):
-                        tot_opex += float(fb_row.get(col.lower(), 0))
-                    tot_costs = tot_cogs + tot_opex
-                    net_profit_val = tot_rev - tot_costs
-            except Exception as e:
-                logger.warning("Could not query aggregate revenue and costs from DuckDB: %s", e)
-
-        if net_profit_val is None and (tot_rev > 0 and (tot_cogs > 0 or tot_costs > 0)) and (is_pl_query or (tot_opex > 0 or tot_mkt > 0)):
+        if is_pl_query:
+            ledger_totals = get_authoritative_ledger_totals(table_name, revenue_col, cogs_col, expense_cols)
+            tot_rev = ledger_totals["total_revenue"]
+            tot_cogs = ledger_totals["total_cogs"]
+            tot_opex = ledger_totals["total_opex"]
+            tot_costs = tot_cogs + tot_opex
             net_profit_val = tot_rev - tot_costs
-
-        if is_pl_query and net_profit_val is not None:
-            net_margin_pct = round((net_profit_val / tot_rev * 100.0), 2) if tot_rev > 0 else 0.0
+            net_margin_pct = ledger_totals["net_margin_pct"]
             resp_style = m_plan.get("response_style") or "EXPLORATORY_DETAILED"
-            if net_profit_val >= 0:
-                cost_details = []
-                if tot_cogs > 0:
-                    cost_details.append(f"COGS: {format_currency_human(tot_cogs, curr_symbol)}")
-                if tot_opex > 0:
-                    cost_details.append(f"Operating Expenses: {format_currency_human(tot_opex, curr_symbol)}")
-                if tot_mkt > 0:
-                    cost_details.append(f"Marketing: {format_currency_human(tot_mkt, curr_symbol)}")
-                cost_summary_str = f" ({', '.join(cost_details)})" if cost_details else ""
 
-                if resp_style == "DIRECT_BINARY":
-                    summary_findings = [
-                        f"No. The business generated a net profit of {format_currency_human(net_profit_val, curr_symbol)} across the evaluated period.",
-                        f"Top-line revenue reached {format_currency_human(tot_rev, curr_symbol)} against consolidated expenses of {format_currency_human(tot_costs, curr_symbol)}{cost_summary_str} (net margin: {net_margin_pct:.2f}%).",
-                        "Zero net financial loss detected across all operating divisions.",
-                    ]
-                    narrative = (
-                        f"No. The company is profitable with a net profit of {format_currency_human(net_profit_val, curr_symbol)} in the evaluated period. "
-                        f"Revenue reached {format_currency_human(tot_rev, curr_symbol)} against total expenses of {format_currency_human(tot_costs, curr_symbol)} "
-                        f"(net operating margin: {net_margin_pct:.2f}%)."
-                    )
-                else:
-                    summary_findings = [
-                        f"Business is profitable overall. Total net profit recorded at {format_currency_human(net_profit_val, curr_symbol)} across the evaluated period.",
-                        f"Top-line revenue totaled {format_currency_human(tot_rev, curr_symbol)} against consolidated costs of {format_currency_human(tot_costs, curr_symbol)}{cost_summary_str} (net margin: {net_margin_pct:.2f}%).",
-                        "Operational health check confirms positive operating leverage with no enterprise-level net loss.",
-                    ]
-                    narrative = (
-                        f"Comprehensive financial audit confirms the business is profitable overall. "
-                        f"Total net profit stands at {format_currency_human(net_profit_val, curr_symbol)} on consolidated revenue of {format_currency_human(tot_rev, curr_symbol)} "
-                        f"(delivering a {net_margin_pct:.2f}% net profit margin). Aggregate operational costs totaled {format_currency_human(tot_costs, curr_symbol)}, "
-                        f"demonstrating healthy solvency and positive cash generation."
-                    )
-                anomalies_detected = []
-                anomaly_data = {
-                    "region": "All Operations",
-                    "expectedVolume": tot_rev,
-                    "actualBilled": tot_costs,
-                    "varianceBps": int(net_margin_pct * 100),
-                    "discrepancyPct": round((net_profit_val / tot_rev) * 100, 2) if tot_rev > 0 else 0.0,
-                    "netProfitLoss": net_profit_val,
-                    "currencySymbol": curr_symbol,
-                }
-            else:
-                if resp_style == "DIRECT_BINARY":
-                    summary_findings = [
-                        f"Yes. Net loss of {format_currency_human(abs(net_profit_val), curr_symbol)} detected across operations.",
-                        f"Consolidated expenses of {format_currency_human(tot_costs, curr_symbol)} exceeded top-line revenue of {format_currency_human(tot_rev, curr_symbol)} (net deficit margin: {net_margin_pct:.2f}%).",
-                        "Immediate expense containment required to restore positive operating margin.",
-                    ]
-                    narrative = (
-                        f"Yes. An enterprise net loss of {format_currency_human(abs(net_profit_val), curr_symbol)} was detected. "
-                        f"Total costs of {format_currency_human(tot_costs, curr_symbol)} exceeded revenue of {format_currency_human(tot_rev, curr_symbol)}."
-                    )
-                else:
-                    summary_findings = [
-                        f"Net loss detected. Total net loss recorded at {format_currency_human(abs(net_profit_val), curr_symbol)}.",
-                        f"Consolidated costs of {format_currency_human(tot_costs, curr_symbol)} exceeded top-line revenue of {format_currency_human(tot_rev, curr_symbol)} (net deficit margin: {net_margin_pct:.2f}%).",
-                        "Immediate operational remediation recommended to contain expense creep and restore positive margin leverage.",
-                    ]
-                    narrative = (
-                        f"Financial audit detected an enterprise net loss. "
-                        f"Consolidated expenditures of {format_currency_human(tot_costs, curr_symbol)} exceeded total revenue of {format_currency_human(tot_rev, curr_symbol)}, "
-                        f"generating a net deficit of {format_currency_human(abs(net_profit_val), curr_symbol)} (net margin: {net_margin_pct:.2f}%)."
-                    )
-                anomalies_detected = [
-                    {
-                        "field": "Enterprise Net Deficit",
-                        "expected": tot_rev,
-                        "actual": tot_costs,
-                        "delta_pct": round(((tot_costs - tot_rev) / tot_rev) * 100, 2) if tot_rev > 0 else 0.0,
-                        "direction": "unfavorable",
-                        "cause": f"Consolidated costs exceeded revenue by {format_currency_human(abs(net_profit_val), curr_symbol)}",
-                    }
-                ]
-                anomaly_data = {
-                    "region": "Enterprise Loss",
-                    "expectedVolume": tot_rev,
-                    "actualBilled": tot_costs,
-                    "varianceBps": int(net_margin_pct * 100),
-                    "discrepancyPct": -round((abs(net_profit_val) / tot_rev) * 100, 2) if tot_rev > 0 else 0.0,
-                    "netProfitLoss": net_profit_val,
-                    "currencySymbol": curr_symbol,
-                }
+            summary_findings, narrative = format_pl_verdict(
+                query=query,
+                resp_style=resp_style,
+                total_rev=tot_rev,
+                total_costs=tot_costs,
+                net_profit_loss=net_profit_val,
+                curr_symbol=curr_symbol,
+                total_cogs=tot_cogs,
+                total_opex=tot_opex,
+                synthesis_instruction=m_plan.get("synthesis_instruction") or "",
+            )
+            anomalies_detected = []
+            anomaly_data = {
+                "region": "All Operations",
+                "expectedVolume": tot_rev,
+                "actualBilled": tot_costs,
+                "varianceBps": int(net_margin_pct * 100),
+                "discrepancyPct": net_margin_pct,
+                "netProfitLoss": net_profit_val,
+                "currencySymbol": curr_symbol,
+            }
         else:
             # Regional margin drop / outlier investigation
             variance_col = None
@@ -1651,11 +1683,15 @@ async def run_agent_q(
                     "currencySymbol": curr_symbol,
                 }
 
+    is_brief_requested = bool(
+        re.search(r"\b(one[\s-]liner|one\s+line|briefly|short\s+answer|in\s+one\s+sentence)\b", query.lower())
+        or ("under 25 words" in (m_plan.get("synthesis_instruction") or ""))
+    )
     if quota_exceeded:
         prefix = "[API Quota Exceeded - Running on deterministic analytical engine]"
-        if not narrative.startswith(prefix):
+        if not is_brief_requested and not narrative.startswith(prefix):
             narrative = f"{prefix} {narrative}"
-        if summary_findings and not summary_findings[0].startswith(prefix):
+        if not is_brief_requested and (m_plan.get("response_style") != "DIRECT_BINARY") and summary_findings and not summary_findings[0].startswith(prefix):
             summary_findings[0] = f"{prefix} {summary_findings[0]}"
 
     return {

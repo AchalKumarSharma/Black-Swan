@@ -71,9 +71,17 @@ def classify_intent_heuristic(
             return "ANOMALY_INVESTIGATION"
 
     # Direct ledger / profit / loss verification checks route cleanly to GENERAL_INQUIRY (Ledger Inquiry)
-    if re.search(r"^(am|is|are|do|does|did|have|has)\b", q_lower) and any(
-        k in q_lower for k in ["loss", "losses", "profitable", "profit", "losing money", "losing", "incur loss", "any loss"]
-    ):
+    # Handles direct questions (with or without conversational prefixes like "just give me a one liner answer, ")
+    is_alt_inquiry = bool(re.search(r"\b(profit\s+or\s+loss|gain\s+or\s+loss|up\s+or\s+down)\b", q_lower))
+    is_direct_pl_verification = (
+        is_alt_inquiry
+        or bool(re.search(r"\b(am|is|are|do|does|did|have|has)\b.*?\b(loss|losses|profitable|profit|profits|losing money|losing|incur loss|any loss)\b", q_lower))
+        or any(k in q_lower for k in ["profit or loss", "huge profit", "huge profits", "am i profitable", "facing loss", "incur loss", "any loss"])
+    )
+    is_anomaly_why = any(k in q_lower for k in ["why did", "why has", "why is", "root cause", "culprit", "drop in", "covenant", "anomaly", "spike"])
+    is_explicit_forecast = any(k in q_lower for k in ["forecast", "projection", "predict", "next year", "next quarter", "future", "outlook"])
+
+    if is_direct_pl_verification and not is_anomaly_why and not is_explicit_forecast:
         return "GENERAL_INQUIRY"
 
     # 1. ANOMALY_INVESTIGATION: Specific root cause questions, why questions, drop/spike anomalies, loss inquiries
@@ -87,7 +95,7 @@ def classify_intent_heuristic(
     # 2. PROFITABILITY_FORECAST: Forward looking, profit projections, run rates, next year
     if any(k in q_lower for k in [
         "forecast", "future", "next year", "next quarter", "projection", "predict",
-        "will we make", "make profit", "profitable next", "run-rate", "forward looking",
+        "will we make", "profitable next", "run-rate", "forward looking",
         "run rate", "expected revenue", "expect revenue", "expected profit", "expected",
         "outlook", "target revenue", "what will be"
     ]):
@@ -112,6 +120,35 @@ def classify_intent_heuristic(
     return "GENERAL_INQUIRY"
 
 
+def generate_synthesis_instruction(query: str) -> str:
+    """Generate precise synthesis instruction for LLM/Agent Q/Agent Eve based on inquiry structure."""
+    q_lower = query.lower().strip()
+    instructions = []
+
+    # 1. Alternative / Choice Question Check
+    is_alt = bool(re.search(r"\b(profit\s+or\s+loss|gain\s+or\s+loss|up\s+or\s+down)\b", q_lower))
+    # 2. Polar Yes/No Question Check
+    is_polar = bool(re.search(r"\b(am|is|are|did|do|does|has|have|was|were)\b", q_lower)) and not is_alt
+    # 3. Brevity Requested Check
+    is_brief = bool(re.search(r"\b(one[\s-]liner|one\s+line|briefly|short\s+answer|in\s+one\s+sentence)\b", q_lower))
+
+    if is_alt:
+        instructions.append(
+            "Do NOT begin with 'Yes.' or 'No.'. State the financial outcome directly (e.g., 'The business generated a net profit of ₹16.07L (19.95% margin)...')."
+        )
+    elif is_polar:
+        instructions.append(
+            "Answer with a decisive 'Yes.' or 'No.' followed strictly by the single factual data point supporting it."
+        )
+
+    if is_brief:
+        instructions.append(
+            "CONSTRAINT: Return strictly ONE sentence under 25 words stating only the decisive metric. No preamble, no multi-clause padding."
+        )
+
+    return " ".join(instructions)
+
+
 def classify_response_style(query: str, intent: str) -> str:
     """Classify inquiry response style: DIRECT_BINARY vs EXPLORATORY_DETAILED."""
     q_lower = query.lower().strip()
@@ -129,17 +166,26 @@ def classify_response_style(query: str, intent: str) -> str:
     # Explicit binary / single-check verification questions
     # e.g., "Am I facing loss?", "Am I profitable?", "Are we losing money?", "Is there any loss?", "Are sales growing?", "Did we beat target?"
     binary_patterns = [
-        r"^(am|is|are|did|do|does|has|have|can|will|was|were)\b",
+        r"\b(am|is|are|did|do|does|has|have|can|will|was|were)\b",
         r"\bis there (any|a)\b",
         r"\bare there (any)?\b",
         r"\bany loss(es)?\b",
         r"\bprofitable\b",
+        r"\bhuge profits?\b",
         r"\blosing money\b",
         r"\bbeat target\b",
         r"\bon track\b",
         r"\bgrowing or dropping\b",
         r"\bgrowing or falling\b",
         r"\bgrowth or decline\b",
+        r"\bprofit\s+or\s+loss\b",
+        r"\bgain\s+or\s+loss\b",
+        r"\bup\s+or\s+down\b",
+        r"\bone[\s-]liner\b",
+        r"\bone\s+line\b",
+        r"\bbriefly\b",
+        r"\bshort\s+answer\b",
+        r"\bin\s+one\s+sentence\b",
     ]
     if any(re.search(pat, q_lower) for pat in binary_patterns):
         return "DIRECT_BINARY"
@@ -317,6 +363,9 @@ async def run_m_director(
     if detected_dim:
         dimension_col = detected_dim
 
+    # Compute synthesis directive for LLM/Agent Q/Agent Eve
+    synthesis_instruction = generate_synthesis_instruction(query)
+
     # Compute heuristic intent & baseline defaults
     heuristic_intent = classify_intent_heuristic(query, target_entities, conversation_history)
     def_hypotheses, def_metrics, def_sql_obj, def_focus = get_intent_defaults(
@@ -336,6 +385,7 @@ async def run_m_director(
             "agent_assigned": "Q",
             "goal": (
                 f"Execute dynamic DuckDB SQL targeting '{table_name}' fulfilling SQL objective: {sql_objective}"
+                + (f" Synthesis Directive: {synthesis_instruction}" if synthesis_instruction else "")
             ),
         },
         {
@@ -344,6 +394,7 @@ async def run_m_director(
             "goal": (
                 "Conduct adversarial audit on Q's variance calculations, verify statistical robustness, "
                 "test covenant thresholds, and compile formula execution ledger."
+                + (f" Synthesis Directive: {synthesis_instruction}" if synthesis_instruction else "")
             ),
         },
         {
@@ -417,9 +468,17 @@ async def run_m_director(
                 response_style = llm_style
 
             # Direct ledger / profit / loss verification checks route cleanly to GENERAL_INQUIRY / DIRECT_BINARY
-            if re.search(r"^(am|is|are|do|does|did|have|has)\b", query.lower().strip()) and any(
-                k in query.lower() for k in ["loss", "losses", "profitable", "profit", "losing money", "losing", "any loss"]
-            ):
+            q_clean = query.lower().strip()
+            is_alt_inq = bool(re.search(r"\b(profit\s+or\s+loss|gain\s+or\s+loss|up\s+or\s+down)\b", q_clean))
+            is_direct_pl = (
+                is_alt_inq
+                or bool(re.search(r"\b(am|is|are|do|does|did|have|has)\b.*?\b(loss|losses|profitable|profit|profits|losing money|losing|incur loss|any loss)\b", q_clean))
+                or any(k in q_clean for k in ["profit or loss", "huge profit", "huge profits", "am i profitable", "facing loss", "incur loss", "any loss"])
+            )
+            is_why = any(k in q_clean for k in ["why did", "why has", "why is", "root cause", "culprit", "drop in", "covenant", "anomaly", "spike"])
+            is_fc = any(k in q_clean for k in ["forecast", "projection", "predict", "next year", "next quarter", "future", "outlook"])
+
+            if is_direct_pl and not is_why and not is_fc:
                 intent = "GENERAL_INQUIRY"
                 response_style = "DIRECT_BINARY"
 
@@ -431,6 +490,7 @@ async def run_m_director(
             # Update subtask 1 goal with specific sql_objective
             default_subtasks[0]["goal"] = (
                 f"Execute dynamic DuckDB SQL targeting '{table_name}' fulfilling SQL objective: {sql_objective}"
+                + (f" Synthesis Directive: {synthesis_instruction}" if synthesis_instruction else "")
             )
 
             logger.info("Director M classified intent '%s' (style: %s) via LiteLLM Router", intent, response_style)
@@ -460,6 +520,7 @@ async def run_m_director(
         "required_metrics": required_metrics,
         "sql_objective": sql_objective,
         "strategic_focus": strategic_focus,
+        "synthesis_instruction": synthesis_instruction,
         "subtasks": [] if intent == "OUT_OF_SCOPE" else default_subtasks,
         "status": "completed",
         "quota_exceeded": quota_exceeded,

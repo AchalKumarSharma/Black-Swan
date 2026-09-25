@@ -42,6 +42,11 @@ import {
   CartesianGrid,
   Tooltip,
 } from "recharts";
+import {
+  ScenarioSimulator,
+  ScenarioLever,
+  ScenarioSimulatorErrorBoundary,
+} from "./ScenarioSimulator";
 
 interface ExecutiveReportCardProps {
   report: ReportBlock;
@@ -114,20 +119,82 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
   const responseStyle = mPlan?.response_style || "EXPLORATORY_DETAILED";
   const isDirectBinary = responseStyle === "DIRECT_BINARY";
 
+  // Data rows and fallback structures
+  const rows = qDiagnostic?.rows || [];
+  const firstRow = rows[0] || {};
+  const rowKeys = Object.keys(firstRow);
+
+  const rawRevenue =
+    Number(anomalyData.expectedVolume) ||
+    Number(anomalyData.total_revenue) ||
+    (rows.length > 0
+      ? rows.reduce(
+          (acc, r) =>
+            acc +
+            (Number(
+              r.total_revenue || r.revenue || r.q2_revenue || r.actual || 0
+            )),
+          0
+        )
+      : 0);
+
+  const rawCosts =
+    Number(anomalyData.actualBilled) ||
+    Number(anomalyData.total_costs) ||
+    (rows.length > 0
+      ? rows.reduce(
+          (acc, r) =>
+            acc +
+            (Number(
+              r.total_costs || r.cogs || r.q2_cogs || r.opex || 0
+            )),
+          0
+        )
+      : 0);
+
+  const netProfitLoss =
+    anomalyData.netProfitLoss !== undefined
+      ? Number(anomalyData.netProfitLoss)
+      : rawRevenue - rawCosts;
+
   // Check if query is binary check or has non-comparative visual
   const chartType = eveAudit?.chart_spec?.chart_type;
   const isChartAvailable =
     !isDirectBinary &&
     chartType !== "none" &&
-    qDiagnostic?.rows &&
-    qDiagnostic.rows.length >= 2;
+    rows.length >= 2;
 
   // Genuine anomaly detection to decide whether to render Actionable Directive
   const hasGenuineAnomaly = Boolean(
-    strategy007?.remediation_levers &&
-      strategy007.remediation_levers.length > 0 &&
+    strategy007 &&
       (!isDirectBinary || (anomalyData.netProfitLoss !== undefined && anomalyData.netProfitLoss < 0))
   );
+
+  // Map Agent 007 remediation levers into ScenarioSimulator format with safe defaults
+  const scenarioLevers: ScenarioLever[] | undefined = React.useMemo(() => {
+    if (!strategy007?.remediation_levers || strategy007.remediation_levers.length === 0) {
+      return undefined;
+    }
+    return strategy007.remediation_levers.map((lever: any, idx: number) => {
+      const impactBps = Number(lever.impact_bps ?? lever.impactBps ?? lever.bps_impact ?? 100);
+      let costSavings = Number(lever.costSavings ?? lever.cost_savings ?? lever.cash_impact_inr);
+      if (!costSavings || isNaN(costSavings)) {
+        if (rawCosts > 0) {
+          costSavings = Math.round(rawCosts * (impactBps / 10000));
+        } else {
+          costSavings = idx === 0 ? 52000 : idx === 1 ? 40000 : 35000;
+        }
+      }
+      return {
+        id: String(lever.id || `lever_${idx + 1}`),
+        label: String(lever.title || lever.label || `Remediation Lever ${idx + 1}`),
+        impactBps,
+        costSavings,
+        description: String(lever.description || lever.action || ""),
+        enabledByDefault: Boolean(lever.enabledByDefault ?? lever.default_active ?? (idx === 0)),
+      };
+    });
+  }, [strategy007?.remediation_levers, rawCosts]);
 
   // Copy SQL receipt
   const sqlToDisplay = qDiagnostic?.executed_sql || "-- No SQL statement recorded";
@@ -139,9 +206,6 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
   };
 
   // Dynamic Recharts spec setup with Agent Q fallback support while eveAudit is pending
-  const rows = qDiagnostic?.rows || [];
-  const firstRow = rows[0] || {};
-  const rowKeys = Object.keys(firstRow);
 
   const xAxisKey = React.useMemo(() => {
     if (eveAudit?.chart_spec?.x_axis_key) {
@@ -423,11 +487,6 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
                 {/* Metric 1: Solvency / Net Status */}
                 {(() => {
-                  const rawRevenue = Number(anomalyData.expectedVolume) || 0;
-                  const rawCosts = Number(anomalyData.actualBilled) || 0;
-                  const netProfitLoss = anomalyData.netProfitLoss !== undefined
-                    ? Number(anomalyData.netProfitLoss)
-                    : (rawRevenue - rawCosts);
                   const isProfitable = netProfitLoss >= 0;
                   const operatingMarginPct = rawRevenue > 0
                     ? ((rawRevenue - rawCosts) / rawRevenue) * 100
@@ -679,6 +738,18 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                   ))}
                 </div>
               )}
+
+              {/* Interactive Pro-Forma Scenario Simulator */}
+              <div className="pt-2">
+                <ScenarioSimulatorErrorBoundary>
+                  <ScenarioSimulator
+                    baselineRevenue={rawRevenue}
+                    baselineCosts={rawCosts}
+                    currencySymbol={currSymbol}
+                    levers={scenarioLevers}
+                  />
+                </ScenarioSimulatorErrorBoundary>
+              </div>
             </section>
           )}
 
