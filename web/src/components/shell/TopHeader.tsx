@@ -23,13 +23,13 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   onUploadNew,
 }) => {
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between border-b border-noir bg-bg-canvas/95 px-6 backdrop-blur-sm transition-colors duration-200">
+    <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between border-b border-noir bg-bg-canvas/95 px-3 sm:px-6 backdrop-blur-sm transition-colors duration-200">
       {/* Left: Brand Identity & Mode Tag */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2.5 sm:gap-4">
         {/* Swan Silhouette Mark + Brand Name matching Landing Page */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <BlackSwanLogo className="w-7 h-7 text-text-primary transition-colors" />
-          <span className="font-display text-2xl font-bold uppercase tracking-tight text-text-primary">
+        <Link href="/" className="flex items-center gap-2 sm:gap-2.5 group">
+          <BlackSwanLogo className="w-6 h-6 sm:w-7 sm:h-7 text-text-primary transition-colors" />
+          <span className="font-display text-xl sm:text-2xl font-bold uppercase tracking-tight text-text-primary">
             Black Swan
           </span>
         </Link>

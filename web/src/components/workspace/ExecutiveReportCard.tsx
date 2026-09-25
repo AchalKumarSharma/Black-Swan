@@ -433,8 +433,8 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
       {/* ─────────────────────────────────────────────────────────────
           1. HEADER BAR: Inquiry badge, timestamp, clean intent tag, model tag
          ───────────────────────────────────────────────────────────── */}
-      <header className="dossier-header flex flex-wrap items-center justify-between gap-3 border-b border-noir px-5 py-3.5 bg-bg-surface-subtle/50">
-        <div className="flex items-center gap-2.5 min-w-0">
+      <header className="dossier-header flex flex-wrap items-center justify-between gap-3 border-b border-noir px-3.5 sm:px-5 py-3 sm:py-3.5 bg-bg-surface-subtle/50 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 max-w-full">
           <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-accent-rust shrink-0">
             INQUIRY //
           </span>
@@ -534,14 +534,14 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
           MAIN CONTENT AREA (Executive Answer, Visuals, Levers)
          ───────────────────────────────────────────────────────────── */}
       {!outOfScope && (
-        <div className="p-5 sm:p-6 space-y-6">
+        <div className="p-3.5 sm:p-6 space-y-6 min-w-0">
           {/* ─────────────────────────────────────────────────────────
               2. EXECUTIVE ANSWER BOX: Plain-English verdict immediately
              ───────────────────────────────────────────────────────── */}
           <section className="space-y-3">
             {isDirectBinary ? (
               // DIRECT_BINARY: Prominent Sentence 1 Verdict + 1-2 Supporting Figures
-              <div className="dossier-card rounded-lg border border-noir bg-bg-surface-subtle p-5 space-y-2">
+              <div className="dossier-card rounded-lg border border-noir bg-bg-surface-subtle p-3.5 sm:p-5 space-y-2 min-w-0">
                 <div className="flex items-start gap-2.5">
                   <div className="mt-0.5">
                     {anomalyData.netProfitLoss !== undefined && anomalyData.netProfitLoss >= 0 ? (
@@ -630,7 +630,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
           <section className="space-y-3">
             {!isChartAvailable ? (
               // Clean KPI Pill Metrics Grid for Binary / Single-Aggregate inquiries
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1 min-w-0">
                 {/* Metric 1: Solvency / Net Status */}
                 {(() => {
                   const isProfitable = netProfitLoss >= 0;
@@ -715,7 +715,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
               </div>
             ) : (
               // Comparative / Temporal Data: Recharts Visual & Summary Table Tab
-              <div className="dossier-card rounded-lg border border-noir bg-bg-canvas p-4 space-y-3">
+              <div className="dossier-card rounded-lg border border-noir bg-bg-canvas p-3 sm:p-4 space-y-3 min-w-0">
                 <div className="flex items-center justify-between flex-wrap gap-2 border-b border-noir pb-2.5">
                   <div className="flex items-center gap-2">
                     <BarChart2 className="h-4 w-4 text-accent-rust" />
@@ -809,7 +809,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                     </ResponsiveContainer>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto min-w-0 max-w-full">
                     <table className="w-full text-left font-body text-xs border-collapse">
                       <thead>
                         <tr className="border-b border-noir font-mono text-[10px] uppercase text-text-muted">
@@ -848,7 +848,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                  Suppressed for healthy/binary answers.
              ───────────────────────────────────────────────────────────── */}
           {hasGenuineAnomaly && strategy007 && (
-            <section className="dossier-card rounded-lg border border-accent-rust/30 bg-accent-rust/5 p-4 sm:p-5 space-y-3.5">
+            <section className="dossier-card rounded-lg border border-accent-rust/30 bg-accent-rust/5 p-3.5 sm:p-5 space-y-3.5 min-w-0">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-accent-rust/20 pb-2.5">
                 <div className="flex items-center gap-2">
                   <Briefcase className="h-4 w-4 text-accent-rust" />
@@ -935,7 +935,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
 
             {/* Collapsible Drawer Body */}
             {isDrawerOpen && (
-              <div className="mt-3 rounded-lg border border-noir bg-bg-canvas/50 p-5 space-y-5 animate-in fade-in duration-200">
+              <div className="mt-3 rounded-lg border border-noir bg-bg-canvas/50 p-3.5 sm:p-5 space-y-5 animate-in fade-in duration-200 min-w-0">
                 {/* 1. Mathematical Receipts / Formula Ledger */}
                 {eveAudit?.formula_ledger && eveAudit.formula_ledger.length > 0 && (
                   <div className="space-y-2">
@@ -971,7 +971,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                         Underlying Ledger Rows ({qDiagnostic.rows.length} records)
                       </span>
                     </div>
-                    <div className="dossier-card overflow-x-auto rounded border border-noir bg-bg-surface">
+                    <div className="dossier-card overflow-x-auto min-w-0 max-w-full rounded border border-noir bg-bg-surface">
                       <table className="w-full text-left font-body text-xs border-collapse">
                         <thead>
                           <tr className="border-b border-noir bg-bg-surface-subtle font-mono text-[10px] uppercase text-text-muted">
@@ -1023,7 +1023,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                       )}
                     </button>
                   </div>
-                  <div className="dossier-card rounded border border-noir bg-[#0a0908] p-3 overflow-x-auto">
+                  <div className="dossier-card rounded border border-noir bg-[#0a0908] p-3 overflow-x-auto min-w-0 max-w-full">
                     <pre className="font-mono text-[11px] leading-relaxed text-emerald-400/90 selection:bg-white selection:text-black">
                       <code>{sqlToDisplay}</code>
                     </pre>

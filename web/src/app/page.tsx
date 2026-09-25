@@ -38,15 +38,15 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-bg-canvas text-text-primary selection:bg-accent-contrast selection:text-bg-canvas flex flex-col relative overflow-x-hidden">
       {/* 1. Top Navigation */}
-      <nav className="w-full border-b border-noir bg-bg-canvas/95 px-6 py-3.5 sm:px-10 backdrop-blur-sm transition-colors duration-200">
-        <div className="mx-auto flex max-w-6xl items-center justify-between">
+      <nav className="relative z-50 w-full bg-[#0A0A0A]/95 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-white/5">
+        <div className="mx-auto flex max-w-6xl items-center justify-between w-full">
           {/* Left: Exact Swan Logo Mark */}
           <Link href="/" className="flex items-center gap-2 group">
-            <BlackSwanLogo className="w-7 h-7 text-text-primary transition-colors" />
+            <BlackSwanLogo className="w-7 h-7 text-white transition-colors" />
           </Link>
 
-          {/* Center: Navigation Links (All text aligned along exact optical baseline) */}
-          <div className="flex items-center gap-6 sm:gap-8 font-body text-xs font-bold uppercase tracking-widest">
+          {/* Center: Navigation Links (Hidden on mobile) */}
+          <div className="hidden md:flex items-center gap-6 font-body text-xs font-bold uppercase tracking-widest">
             <Link
               href="/"
               onClick={() => {
@@ -73,7 +73,7 @@ export default function LandingPage() {
             </button>
             <Link
               href="/login?mode=signin&redirect=/workspace"
-              className="hidden sm:inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-transparent text-text-secondary hover:text-text-primary hover:border-noir transition-colors"
+              className="inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-transparent text-text-secondary hover:text-text-primary hover:border-noir transition-colors"
             >
               Sign In
             </Link>
@@ -81,7 +81,7 @@ export default function LandingPage() {
               href="https://github.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-transparent text-text-secondary hover:text-text-primary hover:border-noir transition-colors"
+              className="inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-transparent text-text-secondary hover:text-text-primary hover:border-noir transition-colors"
             >
               Community
             </a>
@@ -89,10 +89,12 @@ export default function LandingPage() {
 
           {/* Right: Theme Toggle & NEW REPORT Primary Button */}
           <div className="flex items-center gap-3">
-            <ThemeToggle />
+            <div className="hidden md:inline-flex">
+              <ThemeToggle />
+            </div>
             <Link
               href="/login?mode=signup&redirect=/workspace"
-              className="inline-flex h-8 items-center justify-center rounded bg-accent-contrast px-5 font-body text-xs font-bold uppercase tracking-wider text-bg-canvas hover:opacity-90 transition-opacity shadow-none"
+              className="inline-flex items-center justify-center rounded bg-accent-contrast px-3 py-1.5 text-xs font-mono font-bold uppercase tracking-wider text-bg-canvas hover:opacity-90 transition-opacity shadow-none whitespace-nowrap"
             >
               New Report
             </Link>
@@ -104,10 +106,10 @@ export default function LandingPage() {
       <JamesBondArchivalWatermark />
 
       {/* Main Container matching the reference layout */}
-      <main className="mx-auto w-full max-w-6xl px-6 sm:px-10 py-7 md:py-9 flex-1 flex flex-col justify-start relative z-10">
+      <main className="mx-auto w-full max-w-6xl px-3.5 sm:px-10 py-6 sm:py-7 md:py-9 flex-1 flex flex-col justify-start relative z-10">
 
         {/* 2. Top-Secret Stamp Watermark & Interactive Tier Selector */}
-        <div className="relative flex flex-col items-start gap-2 mb-3.5 z-10">
+        <div className="relative flex flex-col items-start gap-2 mb-3.5 z-10 pt-4 sm:pt-8">
           {/* Subtle Top-Secret Stamp Watermark positioned cleanly above pills without overlap */}
           <div className="pointer-events-none select-none inline-flex items-center opacity-45 -rotate-1 border border-dashed border-accent-rust/70 px-2 py-0.5 rounded font-mono text-[9px] font-bold tracking-[0.25em] text-accent-rust">
             CLASSIFIED // SECTION 007
@@ -141,7 +143,7 @@ export default function LandingPage() {
           {/* Left Block: Headline & Tagline */}
           <div className="flex flex-col">
             <div className="inline-flex items-center gap-3">
-              <h1 className="font-display text-5xl sm:text-6xl md:text-7xl font-bold uppercase tracking-tight text-text-primary leading-none">
+              <h1 className="font-display text-4xl sm:text-6xl md:text-7xl font-bold uppercase tracking-tight text-text-primary leading-none">
                 Black Swan
               </h1>
 
@@ -189,35 +191,32 @@ export default function LandingPage() {
           />
         </div>
 
-        {/* 7. Rounded Search-Style Input Bar with Halftone Dossier Framing */}
-        <div className="relative w-full z-10">
-          {/* Subtle Halftone Dossier Background Texture */}
-          <div
-            className="pointer-events-none select-none absolute -inset-2 opacity-[0.08] rounded-xl border border-dashed border-noir"
-            style={{
-              backgroundImage: "radial-gradient(circle, var(--text-secondary) 1px, transparent 1px)",
-              backgroundSize: "8px 8px",
-              mixBlendMode: "var(--dither-blend)" as any,
-            }}
-          />
-
+        {/* 7. Rounded Search-Style Input Bar */}
+        <div className="w-full max-w-2xl px-3 mx-auto relative z-10">
           <form onSubmit={handleSearchSubmit} className="relative w-full">
-            <div className="relative flex items-center w-full rounded-lg border border-noir bg-bg-surface/75 hover:border-text-secondary transition-colors shadow-none backdrop-blur-xs">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary pointer-events-none" />
+            <div className="flex items-center w-full min-w-0 bg-[#0F0F0F] border border-neutral-800 rounded px-3 py-2.5">
+              <Search className="h-4 w-4 text-neutral-500 shrink-0 mr-2.5 pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Ask a question about your financial data..."
-                className="w-full bg-transparent pl-11 pr-4 py-3.5 font-body text-sm text-text-primary placeholder:text-text-secondary/70 focus:outline-none"
+                className="min-w-0 flex-1 bg-transparent text-xs sm:text-sm text-neutral-200 placeholder-neutral-500 focus:outline-none"
               />
-              <div className="hidden sm:flex items-center gap-2 pr-3 pointer-events-none text-[10px] font-mono uppercase tracking-wider text-text-secondary/70">
+              <div className="shrink-0 ml-2 text-[10px] font-mono text-neutral-400 bg-neutral-900 border border-neutral-800 px-2 py-1 rounded select-none pointer-events-none">
                 <span>[ENTER] RUN</span>
               </div>
             </div>
           </form>
         </div>
       </main>
+
+      {/* 8. Bottom Telemetry Coordinates Footer */}
+      <footer className="w-full pb-12 sm:pb-6 px-4 text-center relative z-10 mt-auto">
+        <p className="text-[9px] sm:text-[10px] font-mono text-neutral-600 tracking-wider break-words">
+          COORD: 51°29&apos;14&quot;N 0°07&apos;28&quot;W // CLEARANCE: TOP SECRET // VAUXHALL CROSS LONDON
+        </p>
+      </footer>
 
       {/* Docs Modal */}
       {isDocsOpen && (

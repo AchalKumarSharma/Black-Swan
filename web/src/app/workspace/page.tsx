@@ -647,10 +647,10 @@ function WorkspaceView() {
           className="flex-1 overflow-y-auto overflow-x-hidden relative h-full"
           suppressHydrationWarning={true}
         >
-          <div className="mx-auto max-w-5xl space-y-8 px-6 py-8 lg:px-12 min-h-full">
+          <div className="mx-auto max-w-5xl space-y-8 px-3 sm:px-6 py-4 sm:py-8 lg:px-12 min-h-full min-w-0">
             {/* Hero Query Input Area */}
-            <section className="rounded-xl border border-noir bg-bg-surface p-6 shadow-none transition-colors duration-200">
-              <div className="mb-3 flex items-center justify-between">
+            <section className="rounded-xl border border-noir bg-bg-surface p-4 sm:p-6 shadow-none transition-colors duration-200 min-w-0">
+              <div className="mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <Search className="h-4 w-4 text-text-secondary" />
                   <label
@@ -701,9 +701,9 @@ function WorkspaceView() {
               </div>
 
               {/* Prompt Suggestion Chips & Action Buttons */}
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 {/* 3 Clickable Suggestion Chips (Outlined Sepia Pills matching Landing Page) */}
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                   <span className="font-display text-[10px] font-bold uppercase tracking-widest text-text-secondary mr-1">
                     Suggestions:
                   </span>
@@ -723,7 +723,7 @@ function WorkspaceView() {
                 </div>
 
                 {/* Submit & Cancel Buttons */}
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center justify-end gap-2.5 w-full sm:w-auto">
                   {isRunning && (
                     <button
                       type="button"
@@ -816,7 +816,7 @@ function WorkspaceView() {
             {!isRunning && reports.length === 0 && activeDataset && (
               <div className="space-y-6">
                 {/* Active Dataset Overview Pill Strip */}
-                <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-noir bg-bg-surface p-4 text-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-xl border border-noir bg-bg-surface p-3.5 sm:p-4 text-xs min-w-0">
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-noir bg-bg-canvas text-accent-rust">
                       <FileSpreadsheet className="h-4 w-4" />
@@ -930,7 +930,7 @@ function WorkspaceView() {
 
                     {/* Content overlay */}
                     <div
-                      className="relative z-10 flex flex-col items-center justify-end h-full px-8 py-10 text-center"
+                      className="relative z-10 flex flex-col items-center justify-end h-full px-4 sm:px-8 py-8 sm:py-10 text-center"
                       style={{ minHeight: "290px" }}
                     >
                       {/* Classification tag */}
@@ -956,12 +956,12 @@ function WorkspaceView() {
                       </p>
 
                       {/* Decorative dossier line */}
-                      <div className="mt-6 flex items-center gap-3">
-                        <div className="h-px w-12 bg-text-secondary/30" />
-                        <span className="font-mono text-[9px] uppercase tracking-[0.25em] text-text-muted">
+                      <div className="mt-6 flex items-center gap-2 sm:gap-3 max-w-full overflow-hidden">
+                        <div className="h-px w-6 sm:w-12 shrink-0 bg-text-secondary/30" />
+                        <span className="font-mono text-[9px] uppercase tracking-wider sm:tracking-[0.25em] text-text-muted truncate">
                           Black Swan FP&A Division // MI6 Special Section
                         </span>
-                        <div className="h-px w-12 bg-text-secondary/30" />
+                        <div className="h-px w-6 sm:w-12 shrink-0 bg-text-secondary/30" />
                       </div>
                     </div>
                   </div>
@@ -975,7 +975,7 @@ function WorkspaceView() {
       {/* Upload/Switch Dataset Modal */}
       {showUploadModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm transition-opacity">
-          <div className="relative w-full max-w-xl rounded-xl border border-noir bg-bg-surface p-6 shadow-2xl space-y-4">
+          <div className="relative w-full max-w-xl rounded-xl border border-noir bg-bg-surface p-4 sm:p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-noir">
               <div className="flex items-center gap-2">
                 <span className="font-mono text-xs font-bold uppercase tracking-widest text-accent-rust">

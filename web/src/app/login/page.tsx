@@ -136,7 +136,7 @@ function LoginTerminal() {
   };
 
   return (
-    <div className="w-full max-w-md">
+    <div className="w-full max-w-md min-w-0">
       {/* Mobile-only brand badge */}
       <div className="lg:hidden flex items-center justify-center gap-2.5 mb-8">
         <BlackSwanLogo className="w-6 h-6 text-white" />
@@ -327,7 +327,7 @@ export default function LoginPage() {
       </div>
 
       {/* B. RIGHT PANE (Login Terminal) */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8 bg-[#0A0A0A]">
+      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-4 sm:p-8 min-w-0 bg-[#0A0A0A]">
         <Suspense
           fallback={
             <div className="text-neutral-500 font-mono text-xs">

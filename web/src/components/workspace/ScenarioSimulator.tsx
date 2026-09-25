@@ -220,9 +220,9 @@ export const ScenarioSimulator: React.FC<ScenarioSimulatorProps> = ({
   const activeLeversCount = Object.values(enabledLevers).filter(Boolean).length;
 
   return (
-    <div className="rounded-lg border border-noir/60 bg-bg-surface-subtle/60 p-4 sm:p-5 space-y-4 shadow-none">
+    <div className="rounded-lg border border-noir/60 bg-bg-surface-subtle/60 p-3.5 sm:p-5 space-y-4 shadow-none min-w-0">
       {/* Header bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-noir/40 pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-noir/40 pb-3">
         <div className="flex items-center gap-2">
           <Sliders className="h-4 w-4 text-emerald-400" />
           <span className="font-mono text-xs font-bold uppercase tracking-wider text-text-primary">
@@ -308,8 +308,8 @@ export const ScenarioSimulator: React.FC<ScenarioSimulatorProps> = ({
       </div>
 
       {/* Real-Time Impact Summary Pill (Obsidian Vault Emerald styling) */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-lg border border-emerald-800/40 bg-emerald-950/30">
-        <div className="flex flex-wrap items-center gap-2.5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-3.5 rounded-lg border border-emerald-800/40 bg-emerald-950/30 min-w-0">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 min-w-0">
           <span className="relative flex h-2 w-2">
             <span
               className={`absolute inline-flex h-full w-full rounded-full bg-emerald-400 ${
@@ -329,7 +329,7 @@ export const ScenarioSimulator: React.FC<ScenarioSimulatorProps> = ({
         </div>
 
         {/* Dynamic Secondary Metrics: Pro-Forma Costs & Net Margin % */}
-        <div className="flex flex-wrap items-center gap-4 text-xs font-mono">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs font-mono min-w-0">
           <div className="text-text-muted">
             Pro-Forma Costs:{" "}
             <span className="font-bold text-text-primary tabular-nums">

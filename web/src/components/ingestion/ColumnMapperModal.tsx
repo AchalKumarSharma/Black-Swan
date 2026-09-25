@@ -104,7 +104,7 @@ export const ColumnMapperModal: React.FC<ColumnMapperModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm transition-opacity duration-200">
       <div className="relative w-full max-w-2xl overflow-hidden rounded-xl border border-noir bg-bg-surface shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-noir bg-bg-canvas px-6 py-4">
+        <div className="flex items-center justify-between border-b border-noir bg-bg-canvas px-4 sm:px-6 py-3.5 sm:py-4">
           <div className="flex items-center gap-2.5">
             <span className="font-mono text-xs font-bold uppercase tracking-widest text-accent-rust">
               CLASSIFIED //
@@ -124,7 +124,7 @@ export const ColumnMapperModal: React.FC<ColumnMapperModalProps> = ({
         </div>
 
         {/* Content Body */}
-        <div className="max-h-[70vh] overflow-y-auto p-6 space-y-4">
+        <div className="max-h-[70vh] overflow-y-auto p-4 sm:p-6 space-y-4">
           <div className="flex items-start gap-3 rounded-lg border border-noir bg-bg-canvas p-3.5 text-xs text-text-secondary">
             <AlertTriangle className="h-4 w-4 text-accent-rust shrink-0 mt-0.5" />
             <div>
@@ -145,8 +145,8 @@ export const ColumnMapperModal: React.FC<ColumnMapperModalProps> = ({
           )}
 
           {/* Columns Table */}
-          <div className="rounded-lg border border-noir overflow-hidden">
-            <table className="w-full text-left text-xs">
+          <div className="rounded-lg border border-noir overflow-x-auto min-w-0 max-w-full">
+            <table className="w-full text-left text-xs min-w-[500px]">
               <thead className="border-b border-noir bg-bg-canvas font-display uppercase tracking-wider text-text-secondary text-[11px]">
                 <tr>
                   <th className="py-2.5 px-4 font-semibold">Column</th>

@@ -61,7 +61,7 @@ export const JamesBondArchivalWatermark: React.FC<JamesBondArchivalWatermarkProp
       aria-hidden="true"
     >
       {/* 1. Tactical Border Classification Brackets & Dossier Telemetry */}
-      <div className="absolute top-4 left-6 sm:left-10 font-mono text-[9px] tracking-widest text-text-secondary uppercase flex flex-col gap-0.5">
+      <div className="absolute top-4 left-6 sm:left-10 font-mono text-[9px] tracking-widest text-text-secondary uppercase hidden sm:flex flex-col gap-0.5">
         <span className="font-bold flex items-center gap-1.5">
           <span className="inline-block w-1.5 h-1.5 border-t border-l border-current"></span>
           [FILE: 007-VAUXHALL-RECON]
@@ -85,7 +85,7 @@ export const JamesBondArchivalWatermark: React.FC<JamesBondArchivalWatermarkProp
         <span className="text-[8px] pl-3 opacity-75">GOV-AUTH: D-NOTICE APPLIED // NO-INDEX</span>
       </div>
 
-      <div className="absolute bottom-4 right-6 sm:right-10 font-mono text-[9px] tracking-widest text-text-secondary uppercase text-right flex flex-col gap-0.5">
+      <div className="absolute bottom-4 right-6 sm:right-10 font-mono text-[9px] tracking-widest text-text-secondary uppercase text-right hidden sm:flex flex-col gap-0.5">
         <span className="font-bold flex items-center justify-end gap-1.5">
           COORD: 51°29'14"N 0°07'28"W // CLEARANCE: TOP SECRET
           <span className="inline-block w-1.5 h-1.5 border-b border-r border-current"></span>

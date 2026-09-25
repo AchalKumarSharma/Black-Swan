@@ -157,7 +157,7 @@ export const UploadDropzone: React.FC<UploadDropzoneProps> = ({
             fileInputRef.current.click();
           }
         }}
-        className={`group relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 sm:p-10 transition-all duration-200 cursor-pointer select-none ${
+        className={`group relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-5 sm:p-10 transition-all duration-200 cursor-pointer select-none min-w-0 ${
           isDragOver
             ? "border-accent-rust bg-accent-rust/5 shadow-lg"
             : "border-noir bg-bg-surface hover:border-text-secondary/60 hover:bg-bg-surface-subtle"
@@ -202,7 +202,7 @@ export const UploadDropzone: React.FC<UploadDropzoneProps> = ({
           <span className="rounded border border-noir bg-bg-canvas px-2 py-0.5 font-mono text-[10px] text-text-muted uppercase">
             .PARQUET
           </span>
-          <span className="font-body text-[10px] text-text-muted ml-1">
+          <span className="font-body text-[10px] text-text-muted ml-1 text-center w-full sm:w-auto">
             Max 50MB • Accounting parentheses parsed automatically
           </span>
         </div>
@@ -217,16 +217,16 @@ export const UploadDropzone: React.FC<UploadDropzoneProps> = ({
         </div>
 
         {/* Secondary Action: Load Sample Dataset */}
-        <div className="mt-4" onClick={(e) => e.stopPropagation()}>
+        <div className="mt-4 max-w-full" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
             disabled={isUploading || disabled}
             onClick={handleLoadSample}
-            className="inline-flex items-center gap-2 rounded-lg border border-accent-rust/60 bg-accent-rust/10 px-4 py-2 font-body text-xs font-bold uppercase tracking-wider text-accent-rust hover:bg-accent-rust/20 hover:border-accent-rust transition-colors cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-accent-rust/60 bg-accent-rust/10 px-3 sm:px-4 py-2 font-body text-xs font-bold uppercase tracking-wider text-accent-rust hover:bg-accent-rust/20 hover:border-accent-rust transition-colors cursor-pointer max-w-full text-center"
           >
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>Load Sample Dataset (SaaS Q2 Financials)</span>
-            <ArrowUpRight className="h-3.5 w-3.5 opacity-60" />
+            <Sparkles className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">Load Sample Dataset (SaaS Q2 Financials)</span>
+            <ArrowUpRight className="h-3.5 w-3.5 opacity-60 shrink-0" />
           </button>
         </div>
       </div>
