@@ -11,16 +11,37 @@ import { AlertCircle, CheckCircle2 } from "lucide-react";
 function LoginTerminal() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const rawRedirect = searchParams.get("redirect") || "/workspace";
-  const redirectTarget = rawRedirect.startsWith("/") ? rawRedirect : "/workspace";
+  const mode = searchParams.get("mode");
+  const isSignUp = mode === "signup";
 
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const rawRedirect = searchParams.get("redirect") || "/workspace";
+  const redirectUrl = rawRedirect.startsWith("/") ? rawRedirect : "/workspace";
+
   const [organization, setOrganization] = useState("");
   const [email, setEmail] = useState("analyst@firm.com");
   const [password, setPassword] = useState("••••••••••••");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [infoMsg, setInfoMsg] = useState<string | null>(null);
+
+  // Tab click handlers updating URL smoothly without scrolling
+  const handleSelectSignIn = () => {
+    router.replace(
+      `/login?mode=signin&redirect=${encodeURIComponent(redirectUrl)}`,
+      { scroll: false }
+    );
+    setErrorMsg(null);
+    setInfoMsg(null);
+  };
+
+  const handleSelectSignUp = () => {
+    router.replace(
+      `/login?mode=signup&redirect=${encodeURIComponent(redirectUrl)}`,
+      { scroll: false }
+    );
+    setErrorMsg(null);
+    setInfoMsg(null);
+  };
 
   // Guest Sandbox Clearance (Zero-Lockout)
   const handleGuestClearance = () => {
@@ -35,17 +56,18 @@ function LoginTerminal() {
       // Non-blocking
     }
 
-    router.push(redirectTarget);
+    router.push(redirectUrl);
   };
 
-  // Submit Sign In or Request Clearance
+  // Submit Sign In or Request Clearance / Sign Up
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setErrorMsg(null);
     setInfoMsg(null);
 
-    if (mode === "signin") {
+    if (!isSignUp) {
+      // [ SIGN IN ]
       try {
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
@@ -53,7 +75,7 @@ function LoginTerminal() {
         });
 
         if (error) {
-          setErrorMsg(error.message);
+          setErrorMsg(error.message || "Invalid credentials");
           setIsLoading(false);
           return;
         }
@@ -61,9 +83,9 @@ function LoginTerminal() {
         if (data?.session) {
           document.cookie =
             "bs_clearance_level=1; path=/; max-age=86400; SameSite=Lax";
-          router.push(redirectTarget);
+          router.push(redirectUrl);
         } else {
-          setErrorMsg("Authentication failed. Use Guest Sandbox Clearance to proceed.");
+          setErrorMsg("Invalid credentials. Try Guest Sandbox Clearance.");
           setIsLoading(false);
         }
       } catch (err: unknown) {
@@ -75,7 +97,7 @@ function LoginTerminal() {
         setIsLoading(false);
       }
     } else {
-      // Sign Up / Request Clearance
+      // [ SIGN UP ]
       try {
         const { data, error } = await supabase.auth.signUp({
           email,
@@ -96,10 +118,10 @@ function LoginTerminal() {
         if (data?.session) {
           document.cookie =
             "bs_clearance_level=1; path=/; max-age=86400; SameSite=Lax";
-          router.push(redirectTarget);
+          router.push(redirectUrl);
         } else {
           setInfoMsg(
-            "Clearance credentials created. Please verify via email or sign in."
+            "CLEARANCE INITIATED: Check your inbox for confirmation link."
           );
           setIsLoading(false);
         }
@@ -137,37 +159,29 @@ function LoginTerminal() {
         </p>
       </div>
 
-      {/* Minimalist Tab Switcher */}
+      {/* Minimalist Tab Switcher: [ SIGN IN ] | [ SIGN UP ] */}
       <div className="flex items-center gap-6 border-b border-white/5 mb-6">
         <button
           type="button"
-          onClick={() => {
-            setMode("signin");
-            setErrorMsg(null);
-            setInfoMsg(null);
-          }}
+          onClick={handleSelectSignIn}
           className={
-            mode === "signin"
-              ? "text-white border-b-2 border-[#C25E3E] pb-2 font-mono text-xs tracking-wider cursor-pointer"
-              : "text-neutral-500 hover:text-neutral-300 pb-2 font-mono text-xs tracking-wider cursor-pointer"
+            !isSignUp
+              ? "text-white border-b-2 border-[#C25E3E] pb-2 font-mono text-xs tracking-wider cursor-pointer transition-colors"
+              : "text-neutral-500 hover:text-neutral-300 pb-2 font-mono text-xs tracking-wider cursor-pointer transition-colors"
           }
         >
           [ SIGN IN ]
         </button>
         <button
           type="button"
-          onClick={() => {
-            setMode("signup");
-            setErrorMsg(null);
-            setInfoMsg(null);
-          }}
+          onClick={handleSelectSignUp}
           className={
-            mode === "signup"
-              ? "text-white border-b-2 border-[#C25E3E] pb-2 font-mono text-xs tracking-wider cursor-pointer"
-              : "text-neutral-500 hover:text-neutral-300 pb-2 font-mono text-xs tracking-wider cursor-pointer"
+            isSignUp
+              ? "text-white border-b-2 border-[#C25E3E] pb-2 font-mono text-xs tracking-wider cursor-pointer transition-colors"
+              : "text-neutral-500 hover:text-neutral-300 pb-2 font-mono text-xs tracking-wider cursor-pointer transition-colors"
           }
         >
-          [ REQUEST CLEARANCE ]
+          [ SIGN UP ]
         </button>
       </div>
 
@@ -196,7 +210,7 @@ function LoginTerminal() {
 
       {/* Input Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
-        {mode === "signup" && (
+        {isSignUp && (
           <div>
             <label className="block font-mono text-[10px] uppercase tracking-widest text-neutral-400 mb-1.5">
               ORGANIZATION / FIRM
@@ -206,7 +220,7 @@ function LoginTerminal() {
               value={organization}
               onChange={(e) => setOrganization(e.target.value)}
               placeholder="e.g. Apex Strategic Partners"
-              required={mode === "signup"}
+              required={isSignUp}
               className="w-full rounded bg-[#0F0F0F] border border-neutral-800 px-3.5 py-2 font-mono text-xs text-neutral-200 placeholder-neutral-600 focus:border-[#C25E3E]/70 focus:outline-none transition-colors"
             />
           </div>
@@ -248,9 +262,9 @@ function LoginTerminal() {
         >
           {isLoading
             ? "PROCESSING CLEARANCE..."
-            : mode === "signin"
-            ? "AUTHENTICATE →"
-            : "REGISTER CLEARANCE →"}
+            : isSignUp
+            ? "CREATE ACCOUNT →"
+            : "AUTHENTICATE →"}
         </button>
       </form>
 

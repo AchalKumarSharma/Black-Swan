@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { PublicNav } from "@/components/landing/PublicNav";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { Search, X, Shield, Database, LineChart, Terminal, Lock } from "lucide-react";
 
 import { DitherDistortionImage } from "@/components/ui/DitherDistortionImage";
@@ -37,7 +37,67 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-bg-canvas text-text-primary selection:bg-accent-contrast selection:text-bg-canvas flex flex-col relative overflow-x-hidden">
       {/* 1. Top Navigation */}
-      <PublicNav onOpenDocs={() => setIsDocsOpen(true)} />
+      <nav className="w-full border-b border-noir bg-bg-canvas/95 px-6 py-3.5 sm:px-10 backdrop-blur-sm transition-colors duration-200">
+        <div className="mx-auto flex max-w-6xl items-center justify-between">
+          {/* Left: Exact Swan Logo Mark */}
+          <Link href="/" className="flex items-center gap-2 group">
+            <BlackSwanLogo className="w-7 h-7 text-text-primary transition-colors" />
+          </Link>
+
+          {/* Center: Navigation Links (All text aligned along exact optical baseline) */}
+          <div className="flex items-center gap-6 sm:gap-8 font-body text-xs font-bold uppercase tracking-widest">
+            <Link
+              href="/"
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }
+              }}
+              className="inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-text-primary text-text-primary transition-colors"
+            >
+              Home
+            </Link>
+            <Link
+              href="/workspace?view=reports"
+              className="inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-transparent text-text-secondary hover:text-text-primary hover:border-noir transition-colors"
+            >
+              Reports
+            </Link>
+            <button
+              type="button"
+              onClick={() => setIsDocsOpen(true)}
+              className="inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-transparent text-text-secondary hover:text-text-primary hover:border-noir uppercase font-bold text-xs tracking-widest transition-colors cursor-pointer"
+            >
+              Docs
+            </button>
+            <Link
+              href="/login?mode=signin&redirect=/workspace"
+              className="hidden sm:inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-transparent text-text-secondary hover:text-text-primary hover:border-noir transition-colors"
+            >
+              Sign In
+            </Link>
+            <a
+              href="https://github.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden sm:inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-transparent text-text-secondary hover:text-text-primary hover:border-noir transition-colors"
+            >
+              Community
+            </a>
+          </div>
+
+          {/* Right: Theme Toggle & NEW REPORT Primary Button */}
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <Link
+              href="/login?mode=signup&redirect=/workspace"
+              className="inline-flex h-8 items-center justify-center rounded bg-accent-contrast px-5 font-body text-xs font-bold uppercase tracking-wider text-bg-canvas hover:opacity-90 transition-opacity shadow-none"
+            >
+              New Report
+            </Link>
+          </div>
+        </div>
+      </nav>
 
       {/* MI6 / James Bond Cold War Archival Intelligence Dossier Watermark */}
       <JamesBondArchivalWatermark />
@@ -103,13 +163,13 @@ export default function LandingPage() {
           {/* Right Block: GET STARTED Button + Underlined SIGN IN Link */}
           <div className="flex items-center gap-6 self-start md:self-end">
             <Link
-              href="/workspace"
+              href="/login?mode=signup&redirect=/workspace"
               className="inline-flex items-center justify-center rounded bg-accent-contrast px-7 py-2.5 font-body text-xs font-bold uppercase tracking-wider text-bg-canvas hover:opacity-90 transition-opacity shadow-none"
             >
               Get Started
             </Link>
             <Link
-              href="/login"
+              href="/login?mode=signin&redirect=/workspace"
               className="font-body text-xs font-bold uppercase tracking-wider text-text-secondary underline underline-offset-4 hover:text-text-primary transition-colors cursor-pointer"
             >
               Sign In
