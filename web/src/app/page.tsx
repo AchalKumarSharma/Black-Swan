@@ -108,13 +108,12 @@ export default function LandingPage() {
             >
               Get Started
             </Link>
-            <button
-              type="button"
-              onClick={() => setIsSignInOpen(true)}
+            <Link
+              href="/login"
               className="font-body text-xs font-bold uppercase tracking-wider text-text-secondary underline underline-offset-4 hover:text-text-primary transition-colors cursor-pointer"
             >
               Sign In
-            </button>
+            </Link>
           </div>
         </div>
 

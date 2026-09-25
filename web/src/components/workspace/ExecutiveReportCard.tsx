@@ -30,6 +30,7 @@ import {
   Sliders,
   Briefcase,
   HelpCircle,
+  Printer,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -294,11 +295,89 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
   };
 
   return (
-    <article className="rounded-xl border border-noir bg-bg-surface shadow-none overflow-hidden transition-all duration-200">
+    <article className="dossier-card rounded-xl border border-noir bg-bg-surface shadow-none overflow-hidden transition-all duration-200">
+      {/* ─────────────────────────────────────────────────────────────
+          STAGE 6: ISOLATED PRINT STYLESHEET (EXECUTIVE DOSSIER ENGINE)
+         ───────────────────────────────────────────────────────────── */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+     @media print {
+       @page {
+         size: A4 portrait;
+         margin: 14mm 12mm 14mm 12mm;
+       }
+       html, body {
+         background-color: #FAF8F5 !important;
+         color: #111827 !important;
+         -webkit-print-color-adjust: exact;
+         print-color-adjust: exact;
+         overflow: visible !important;
+         height: auto !important;
+       }
+       #workspace-canvas-scroll, main {
+         overflow: visible !important;
+         height: auto !important;
+         max-height: none !important;
+         padding: 0 !important;
+         margin: 0 !important;
+       }
+       /* Ensure Recharts SVGs retain legible print dimensions */
+       .recharts-responsive-container {
+         width: 100% !important;
+         min-height: 260px !important;
+       }
+       .recharts-surface {
+         overflow: visible !important;
+       }
+       .recharts-text, .recharts-cartesian-axis-tick text {
+         fill: #374151 !important;
+       }
+       .recharts-cartesian-axis-line, .recharts-cartesian-axis-tick-line {
+         stroke: #D1D5DB !important;
+       }
+       /* Prevent awkward page breaks across key cards */
+       .dossier-card {
+         break-inside: avoid !important;
+         page-break-inside: avoid !important;
+         border: 1px solid #E5E7EB !important;
+         background-color: #FFFFFF !important;
+         color: #111827 !important;
+       }
+       /* Safeguard 1: Text Visibility Safeguard */
+       .dossier-card, .dossier-card h1, .dossier-card h2, .dossier-card h3, .dossier-card h4, .dossier-card h5, .dossier-card p, .dossier-card span {
+         color: #111827 !important;
+       }
+       .dossier-card [class*="text-text-secondary"], .dossier-card [class*="text-text-muted"] {
+         color: #4B5563 !important;
+       }
+       .dossier-card [class*="accent-rust"] {
+         color: #991B1B !important;
+       }
+       .dossier-card [class*="emerald"] {
+         color: #065F46 !important;
+       }
+       /* Safeguard 2: Escape-Safe Print Hiding */
+       [class*="print:hidden"] {
+         display: none !important;
+       }
+       /* Hide non-dossier workspace chrome during print */
+       header:not(.dossier-header),
+       aside,
+       nav,
+       #workspace-canvas-scroll > div > section:first-of-type,
+       .agent-status-rail {
+         display: none !important;
+       }
+     }
+   `,
+        }}
+      />
+
       {/* ─────────────────────────────────────────────────────────────
           1. HEADER BAR: Inquiry badge, timestamp, clean intent tag, model tag
          ───────────────────────────────────────────────────────────── */}
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-noir px-5 py-3.5 bg-bg-surface-subtle/50">
+      <header className="dossier-header flex flex-wrap items-center justify-between gap-3 border-b border-noir px-5 py-3.5 bg-bg-surface-subtle/50">
         <div className="flex items-center gap-2.5 min-w-0">
           <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-accent-rust shrink-0">
             INQUIRY //
@@ -341,6 +420,17 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
               })}
             </span>
           </div>
+
+          {/* Dossier Action Button */}
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="print:hidden inline-flex items-center gap-1.5 rounded border border-noir bg-bg-canvas hover:bg-bg-surface hover:border-accent-rust/60 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-text-secondary hover:text-text-primary transition-all cursor-pointer shadow-none active:scale-[0.98]"
+            title="Export Print-Ready Executive Dossier (PDF / Print)"
+          >
+            <Printer className="h-3 w-3 text-accent-rust" />
+            <span>Export Dossier</span>
+          </button>
         </div>
       </header>
 
@@ -363,7 +453,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
             </div>
           </div>
           {outOfScope.suggested_queries && outOfScope.suggested_queries.length > 0 && (
-            <div className="pt-3 border-t border-noir">
+            <div className="print:hidden pt-3 border-t border-noir">
               <span className="font-display text-[10px] font-bold uppercase tracking-widest text-text-muted block mb-2">
                 Suggested Financial Inquiries:
               </span>
@@ -395,7 +485,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
           <section className="space-y-3">
             {isDirectBinary ? (
               // DIRECT_BINARY: Prominent Sentence 1 Verdict + 1-2 Supporting Figures
-              <div className="rounded-lg border border-noir bg-bg-surface-subtle p-5 space-y-2">
+              <div className="dossier-card rounded-lg border border-noir bg-bg-surface-subtle p-5 space-y-2">
                 <div className="flex items-start gap-2.5">
                   <div className="mt-0.5">
                     {anomalyData.netProfitLoss !== undefined && anomalyData.netProfitLoss >= 0 ? (
@@ -427,7 +517,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                 {eveAudit?.executive_brief ? (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {/* Part 1: Headline Takeaway */}
-                    <div className="rounded-lg border border-noir bg-bg-surface-subtle p-4 space-y-1.5">
+                    <div className="dossier-card rounded-lg border border-noir bg-bg-surface-subtle p-4 space-y-1.5">
                       <div className="flex items-center gap-1.5 font-display text-[10px] font-bold uppercase tracking-wider text-accent-rust">
                         <Info className="h-3.5 w-3.5" />
                         <span>Headline Takeaway</span>
@@ -438,7 +528,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                     </div>
 
                     {/* Part 2: Key Operational Driver */}
-                    <div className="rounded-lg border border-noir bg-bg-surface-subtle p-4 space-y-1.5">
+                    <div className="dossier-card rounded-lg border border-noir bg-bg-surface-subtle p-4 space-y-1.5">
                       <div className="flex items-center gap-1.5 font-display text-[10px] font-bold uppercase tracking-wider text-text-secondary">
                         <TrendingDown className="h-3.5 w-3.5" />
                         <span>Key Operational Driver</span>
@@ -449,7 +539,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                     </div>
 
                     {/* Part 3: Recommended Action */}
-                    <div className="rounded-lg border border-noir bg-bg-surface-subtle p-4 space-y-1.5 border-l-2 border-l-accent-rust">
+                    <div className="dossier-card rounded-lg border border-noir bg-bg-surface-subtle p-4 space-y-1.5 border-l-2 border-l-accent-rust">
                       <div className="flex items-center gap-1.5 font-display text-[10px] font-bold uppercase tracking-wider text-text-primary">
                         <ArrowUpRight className="h-3.5 w-3.5 text-accent-rust" />
                         <span>Recommended Action</span>
@@ -461,7 +551,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                   </div>
                 ) : (
                   // Fallback standard executive narrative
-                  <div className="rounded-lg border border-noir bg-bg-surface-subtle p-4 space-y-2">
+                  <div className="dossier-card rounded-lg border border-noir bg-bg-surface-subtle p-4 space-y-2">
                     <p className="font-body text-sm font-semibold text-text-primary leading-relaxed">
                       {qDiagnostic?.summary_findings?.[0] || "Analysis completed."}
                     </p>
@@ -494,7 +584,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
 
                   return (
                     <>
-                      <div className="rounded-lg border border-noir bg-bg-canvas p-3.5 space-y-1">
+                      <div className="dossier-card rounded-lg border border-noir bg-bg-canvas p-3.5 space-y-1">
                         <span className="font-display text-[10px] font-bold uppercase tracking-wider text-text-muted block">
                           Enterprise Net Result
                         </span>
@@ -520,7 +610,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                       </div>
 
                       {/* Metric 2: Consolidated Revenue */}
-                      <div className="rounded-lg border border-noir bg-bg-canvas p-3.5 space-y-1">
+                      <div className="dossier-card rounded-lg border border-noir bg-bg-canvas p-3.5 space-y-1">
                         <span className="font-display text-[10px] font-bold uppercase tracking-wider text-text-muted block">
                           Total Revenue
                         </span>
@@ -533,7 +623,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                       </div>
 
                       {/* Metric 3: Total Expenses */}
-                      <div className="rounded-lg border border-noir bg-bg-canvas p-3.5 space-y-1">
+                      <div className="dossier-card rounded-lg border border-noir bg-bg-canvas p-3.5 space-y-1">
                         <span className="font-display text-[10px] font-bold uppercase tracking-wider text-text-muted block">
                           Total Costs &amp; Opex
                         </span>
@@ -549,7 +639,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                 })()}
 
                 {/* Metric 4: Covenant Verification */}
-                <div className="rounded-lg border border-noir bg-bg-canvas p-3.5 space-y-1">
+                <div className="dossier-card rounded-lg border border-noir bg-bg-canvas p-3.5 space-y-1">
                   <span className="font-display text-[10px] font-bold uppercase tracking-wider text-text-muted block">
                     Covenant Status
                   </span>
@@ -566,7 +656,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
               </div>
             ) : (
               // Comparative / Temporal Data: Recharts Visual & Summary Table Tab
-              <div className="rounded-lg border border-noir bg-bg-canvas p-4 space-y-3">
+              <div className="dossier-card rounded-lg border border-noir bg-bg-canvas p-4 space-y-3">
                 <div className="flex items-center justify-between flex-wrap gap-2 border-b border-noir pb-2.5">
                   <div className="flex items-center gap-2">
                     <BarChart2 className="h-4 w-4 text-accent-rust" />
@@ -575,7 +665,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-1 bg-bg-surface rounded border border-noir p-0.5 text-[11px] font-body font-semibold">
+                  <div className="print:hidden flex items-center gap-1 bg-bg-surface rounded border border-noir p-0.5 text-[11px] font-body font-semibold">
                     <button
                       type="button"
                       onClick={() => setVisualTab("chart")}
@@ -699,7 +789,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                  Suppressed for healthy/binary answers.
              ───────────────────────────────────────────────────────────── */}
           {hasGenuineAnomaly && strategy007 && (
-            <section className="rounded-lg border border-accent-rust/30 bg-accent-rust/5 p-4 sm:p-5 space-y-3.5">
+            <section className="dossier-card rounded-lg border border-accent-rust/30 bg-accent-rust/5 p-4 sm:p-5 space-y-3.5">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-accent-rust/20 pb-2.5">
                 <div className="flex items-center gap-2">
                   <Briefcase className="h-4 w-4 text-accent-rust" />
@@ -720,7 +810,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                   {strategy007.remediation_levers.map((lever, lIdx) => (
                     <div
                       key={lever.id || lIdx}
-                      className="rounded border border-noir bg-bg-surface p-3.5 space-y-1.5 text-xs shadow-none"
+                      className="dossier-card rounded border border-noir bg-bg-surface p-3.5 space-y-1.5 text-xs shadow-none"
                     >
                       <div className="flex items-center justify-between gap-1 font-mono text-[10px]">
                         <span className="font-bold text-accent-rust">
@@ -761,7 +851,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
             <button
               type="button"
               onClick={() => setIsDrawerOpen(!isDrawerOpen)}
-              className="flex items-center justify-between w-full py-2.5 px-3 rounded hover:bg-bg-surface-subtle transition-colors cursor-pointer select-none group text-left"
+              className="print:hidden flex items-center justify-between w-full py-2.5 px-3 rounded hover:bg-bg-surface-subtle transition-colors cursor-pointer select-none group text-left"
             >
               <div className="flex items-center gap-2">
                 <span className="font-mono text-xs text-text-muted group-hover:text-text-primary transition-colors">
@@ -797,7 +887,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                       {eveAudit.formula_ledger.map((entry, idx) => (
                         <div
                           key={idx}
-                          className="rounded border border-noir bg-bg-surface p-3 text-xs space-y-1 font-body"
+                          className="dossier-card rounded border border-noir bg-bg-surface p-3 text-xs space-y-1 font-body"
                         >
                           <div className="font-display font-bold uppercase text-[11px] tracking-tight text-text-primary">
                             {entry.metric}
@@ -822,7 +912,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                         Underlying Ledger Rows ({qDiagnostic.rows.length} records)
                       </span>
                     </div>
-                    <div className="overflow-x-auto rounded border border-noir bg-bg-surface">
+                    <div className="dossier-card overflow-x-auto rounded border border-noir bg-bg-surface">
                       <table className="w-full text-left font-body text-xs border-collapse">
                         <thead>
                           <tr className="border-b border-noir bg-bg-surface-subtle font-mono text-[10px] uppercase text-text-muted">
@@ -859,7 +949,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                     <button
                       type="button"
                       onClick={handleCopySql}
-                      className="inline-flex items-center gap-1.5 rounded border border-noir bg-bg-surface px-2.5 py-1 font-body text-[11px] font-semibold text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+                      className="print:hidden inline-flex items-center gap-1.5 rounded border border-noir bg-bg-surface px-2.5 py-1 font-body text-[11px] font-semibold text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
                     >
                       {copiedSql ? (
                         <>
@@ -874,7 +964,7 @@ export const ExecutiveReportCard: React.FC<ExecutiveReportCardProps> = ({
                       )}
                     </button>
                   </div>
-                  <div className="rounded border border-noir bg-[#0a0908] p-3 overflow-x-auto">
+                  <div className="dossier-card rounded border border-noir bg-[#0a0908] p-3 overflow-x-auto">
                     <pre className="font-mono text-[11px] leading-relaxed text-emerald-400/90 selection:bg-white selection:text-black">
                       <code>{sqlToDisplay}</code>
                     </pre>
