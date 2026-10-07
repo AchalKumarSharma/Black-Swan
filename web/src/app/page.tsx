@@ -49,10 +49,9 @@ export default function LandingPage() {
           <div className="hidden md:flex items-center gap-6 font-body text-xs font-bold uppercase tracking-widest">
             <Link
               href="/"
-              onClick={() => {
-                if (typeof window !== "undefined") {
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }
+              onClick={(e) => {
+                e.preventDefault();
+                window.scrollTo(0, 0);
               }}
               className="inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-text-primary text-text-primary transition-colors"
             >
@@ -106,7 +105,7 @@ export default function LandingPage() {
       <JamesBondArchivalWatermark />
 
       {/* Main Container matching the reference layout */}
-      <main className="mx-auto w-full max-w-6xl px-3.5 sm:px-10 py-6 sm:py-7 md:py-9 flex-1 flex flex-col justify-start relative z-10">
+      <main className="mx-auto w-full max-w-6xl px-3.5 sm:px-10 pt-6 sm:pt-7 md:pt-9 pb-6 sm:pb-8 flex-1 flex flex-col justify-start relative z-10">
 
         {/* 2. Top-Secret Stamp Watermark & Interactive Tier Selector */}
         <div className="relative flex flex-col items-start gap-2 mb-3.5 z-10 pt-4 sm:pt-8">
@@ -171,12 +170,13 @@ export default function LandingPage() {
             >
               Get Started
             </Link>
-            <Link
-              href="/login?mode=signin&redirect=/workspace"
-              className="font-body text-xs font-bold uppercase tracking-wider text-text-secondary underline underline-offset-4 hover:text-text-primary transition-colors cursor-pointer"
+            <button
+              type="button"
+              onClick={() => setIsSignInOpen(true)}
+              className="text-xs font-mono uppercase tracking-wider text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
             >
               Sign In
-            </Link>
+            </button>
           </div>
         </div>
 
@@ -191,32 +191,37 @@ export default function LandingPage() {
           />
         </div>
 
-        {/* 7. Rounded Search-Style Input Bar */}
-        <div className="w-full max-w-2xl px-3 mx-auto relative z-10">
+        {/* 7. Rounded Search-Style Input Bar with Halftone Dossier Framing */}
+        <div className="w-full max-w-4xl mx-auto px-3 sm:px-4 min-w-0 relative z-10">
+          <div
+            className="pointer-events-none select-none absolute -inset-2 opacity-[0.08] rounded-xl border border-dashed border-noir"
+            style={{
+              backgroundImage: "radial-gradient(circle, var(--text-secondary) 1px, transparent 1px)",
+              backgroundSize: "8px 8px",
+              mixBlendMode: "var(--dither-blend)" as any,
+            }}
+          />
           <form onSubmit={handleSearchSubmit} className="relative w-full">
-            <div className="flex items-center w-full min-w-0 bg-[#0F0F0F] border border-neutral-800 rounded px-3 py-2.5">
-              <Search className="h-4 w-4 text-neutral-500 shrink-0 mr-2.5 pointer-events-none" />
+            <div className="relative flex items-center w-full rounded-lg border border-noir bg-bg-surface/75 hover:border-text-secondary transition-colors shadow-none backdrop-blur-xs">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary pointer-events-none"/>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Ask a question about your financial data..."
-                className="min-w-0 flex-1 bg-transparent text-xs sm:text-sm text-neutral-200 placeholder-neutral-500 focus:outline-none"
+                className="w-full bg-transparent pl-11 pr-24 py-3.5 font-body text-sm text-text-primary placeholder:text-text-secondary/70 focus:outline-none"
               />
-              <div className="shrink-0 ml-2 text-[10px] font-mono text-neutral-400 bg-neutral-900 border border-neutral-800 px-2 py-1 rounded select-none pointer-events-none">
-                <span>[ENTER] RUN</span>
-              </div>
+              <button
+                type="submit"
+                className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-text-secondary/90 bg-bg-canvas/80 border border-noir rounded cursor-pointer hover:text-text-primary hover:border-text-secondary transition-colors"
+              >
+                [ENTER] RUN
+              </button>
             </div>
           </form>
         </div>
       </main>
 
-      {/* 8. Bottom Telemetry Coordinates Footer */}
-      <footer className="w-full pb-12 sm:pb-6 px-4 text-center relative z-10 mt-auto">
-        <p className="text-[9px] sm:text-[10px] font-mono text-neutral-600 tracking-wider break-words">
-          COORD: 51°29&apos;14&quot;N 0°07&apos;28&quot;W // CLEARANCE: TOP SECRET // VAUXHALL CROSS LONDON
-        </p>
-      </footer>
 
       {/* Docs Modal */}
       {isDocsOpen && (

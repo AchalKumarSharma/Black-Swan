@@ -66,6 +66,42 @@ function WorkspaceView() {
   // Active Stream Controller reference
   const streamControllerRef = useRef<StreamController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleDirectFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("workspace_id", "00000000-0000-0000-0000-000000000001");
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      fetch(`${apiBase}/api/v1/data/upload`, {
+        method: "POST",
+        body: formData,
+      })
+        .then((res) => {
+          if (!res.ok) {
+            return res.json().then((errData) => {
+              if (res.status === 422 && Array.isArray(errData.detail)) {
+                setIngestionErrors(errData.detail);
+              } else {
+                setIngestionErrors([
+                  { field: "upload", issue: errData.detail || `Upload failed with status ${res.status}` },
+                ]);
+              }
+            });
+          }
+          return res.json().then((data: UploadResponse) => {
+            handleUploadSuccess(data);
+          });
+        })
+        .catch((err) => {
+          setIngestionErrors([
+            { field: "network", issue: err?.message || "Failed to reach backend ingestion server." },
+          ]);
+        });
+    }
+  };
 
 
   // 4-Agent Step States for Status Rail
@@ -124,20 +160,19 @@ function WorkspaceView() {
             });
           })
           .then((res) => (res.ok ? res.json() : null))
-          .then((data: UploadResponse | null) => {
+          .then((data) => {
             if (data && data.status === "ingested") {
-              setActiveDataset({
-                id: data.dataset_id,
-                fileName: data.file_name,
-                rowCount: data.row_count,
-                inferredSchema: data.inferred_schema,
-              });
+              const datasetObj: ActiveDataset = {
+                id: data.dataset_id || data.id,
+                fileName: data.file_name || data.fileName,
+                rowCount: data.row_count || data.rowCount,
+                inferredSchema: data.inferred_schema || data.inferredSchema,
+              };
+              setActiveDataset(datasetObj);
+              handleStartAnalysis(q, datasetObj);
             }
           })
-          .catch((err) => console.error("Auto sample load failed:", err))
-          .finally(() => {
-            handleStartAnalysis(q);
-          });
+          .catch((err) => console.error("Auto sample load failed:", err));
       } else {
         handleStartAnalysis(q);
       }
@@ -201,12 +236,68 @@ function WorkspaceView() {
     }
   };
 
+  // Auto-load sample dataset if none active when suggestion chip is clicked
+  const handlePromptPillClick = async (promptText: string) => {
+    setQuery(promptText);
+    if (!activeDataset) {
+      try {
+        const res = await fetch("/SaaS_Q2_Financials.csv");
+        if (!res.ok) throw new Error("Could not find sample dataset file in public directory.");
+        const blob = await res.blob();
+        const file = new File([blob], "SaaS_Q2_Financials.csv", { type: "text/csv" });
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("workspace_id", "00000000-0000-0000-0000-000000000001");
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+        const uploadRes = await fetch(`${apiBase}/api/v1/data/upload`, {
+          method: "POST",
+          body: formData,
+        });
+        if (uploadRes.ok) {
+          const data = await uploadRes.json();
+          if (data && data.status === "ingested") {
+            const datasetObj: ActiveDataset = {
+              id: data.dataset_id || data.id,
+              fileName: data.file_name || data.fileName,
+              rowCount: data.row_count || data.rowCount,
+              inferredSchema: data.inferred_schema || data.inferredSchema,
+            };
+            setActiveDataset(datasetObj);
+            handleStartAnalysis(promptText, datasetObj);
+            return;
+          }
+        } else {
+          const errData = await uploadRes.json().catch(() => ({}));
+          setIngestionErrors([
+            {
+              field: "upload",
+              issue: errData.detail || "Failed to auto-ingest default sample dataset.",
+            },
+          ]);
+          return;
+        }
+      } catch (err: any) {
+        console.error("Auto load sample on suggestion click failed:", err);
+        setIngestionErrors([
+          {
+            field: "network",
+            issue: err?.message || "Failed to reach backend ingestion server.",
+          },
+        ]);
+        return;
+      }
+    } else {
+      handleStartAnalysis(promptText);
+    }
+  };
+
   // Trigger Analysis Execution
-  const handleStartAnalysis = (promptToRun?: string) => {
-    const targetPrompt = promptToRun !== undefined ? promptToRun : query;
+  const handleStartAnalysis = (queryStr?: string, explicitDataset?: any) => {
+    const targetPrompt = queryStr !== undefined ? queryStr : query;
     if (!targetPrompt.trim() || isRunning) return;
 
-    if (!activeDataset) {
+    const dataset = explicitDataset || activeDataset;
+    if (!dataset) {
       setIngestionErrors([
         {
           field: "dataset",
@@ -216,6 +307,7 @@ function WorkspaceView() {
       return;
     }
 
+    const datasetId = dataset.id || dataset.dataset_id;
 
     // Start new report block (appended to history)
     const blockId = `rep-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
@@ -277,7 +369,7 @@ function WorkspaceView() {
       }));
 
     const controller = runAgentInvestigation(
-      activeDataset.id,
+      datasetId,
       targetPrompt,
       (event: SSEStreamEvent) => {
         handleStreamEvent(event);
@@ -639,6 +731,32 @@ function WorkspaceView() {
             setQuery(title);
             handleStartAnalysis(title);
           }}
+          onSelectDataSource={async (sourceName) => {
+            if (sourceName === "SaaS_Q2_Financials.csv") {
+              try {
+                const res = await fetch("/SaaS_Q2_Financials.csv");
+                if (!res.ok) return;
+                const blob = await res.blob();
+                const file = new File([blob], "SaaS_Q2_Financials.csv", { type: "text/csv" });
+                const formData = new FormData();
+                formData.append("file", file);
+                formData.append("workspace_id", "00000000-0000-0000-0000-000000000001");
+                const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+                const uploadRes = await fetch(`${apiBase}/api/v1/data/upload`, {
+                  method: "POST",
+                  body: formData,
+                });
+                if (uploadRes.ok) {
+                  const data = await uploadRes.json();
+                  handleUploadSuccess(data);
+                }
+              } catch (err) {
+                console.error("Data source load failed:", err);
+              }
+            } else {
+              setIngestionToast(`Data connection "${sourceName}" is managed by enterprise sync.`);
+            }
+          }}
         />
 
         {/* Main Canvas (Independently scrollable with Lenis smooth momentum) */}
@@ -711,10 +829,7 @@ function WorkspaceView() {
                     <button
                       key={promptText}
                       type="button"
-                      onClick={() => {
-                        setQuery(promptText);
-                        handleStartAnalysis(promptText);
-                      }}
+                      onClick={() => handlePromptPillClick(promptText)}
                       className="rounded-full border border-noir px-3.5 py-1 font-body text-[10px] font-bold uppercase tracking-widest text-text-secondary bg-transparent hover:border-text-primary hover:text-text-primary transition-colors cursor-pointer"
                     >
                       {promptText}
@@ -794,7 +909,7 @@ function WorkspaceView() {
                   (ingestionErrors.some(
                     (err) =>
                       err.field === "dataset" ||
-                      err.issue.toLowerCase().includes("no active dataset")
+                      Boolean(err.issue?.toLowerCase().includes("no active dataset"))
                   ) ? (
                     <LedgerStandbyBanner
                       onDismiss={() => setIngestionErrors([])}
@@ -803,6 +918,10 @@ function WorkspaceView() {
                     <IngestionErrorTray
                       errors={ingestionErrors}
                       onDismiss={() => setIngestionErrors([])}
+                      onRetry={() => {
+                        setIngestionErrors([]);
+                        if (fileInputRef.current) fileInputRef.current.click();
+                      }}
                     />
                   ))}
                 <UploadDropzone
@@ -997,7 +1116,7 @@ function WorkspaceView() {
               (ingestionErrors.some(
                 (err) =>
                   err.field === "dataset" ||
-                  err.issue.toLowerCase().includes("no active dataset")
+                  Boolean(err.issue?.toLowerCase().includes("no active dataset"))
               ) ? (
                 <LedgerStandbyBanner
                   onDismiss={() => setIngestionErrors([])}
@@ -1006,6 +1125,10 @@ function WorkspaceView() {
                 <IngestionErrorTray
                   errors={ingestionErrors}
                   onDismiss={() => setIngestionErrors([])}
+                  onRetry={() => {
+                    setIngestionErrors([]);
+                    if (fileInputRef.current) fileInputRef.current.click();
+                  }}
                 />
               ))}
             <UploadDropzone
@@ -1042,6 +1165,15 @@ function WorkspaceView() {
           </button>
         </div>
       )}
+
+      {/* Hidden file input for retry and programmatic triggering */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept=".csv,.xlsx,.parquet,.json"
+        onChange={handleDirectFileInputChange}
+      />
     </div>
 
   );

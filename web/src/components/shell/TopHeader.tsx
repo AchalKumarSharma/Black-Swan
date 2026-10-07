@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState } from "react";
 import Link from "next/link";
 import { ChevronDown, FileText, User } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -22,6 +23,8 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   activeDataset,
   onUploadNew,
 }) => {
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between border-b border-noir bg-bg-canvas/95 px-3 sm:px-6 backdrop-blur-sm transition-colors duration-200">
       {/* Left: Brand Identity & Mode Tag */}
@@ -101,13 +104,43 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           <span className="hidden sm:inline">Docs</span>
         </Link>
 
-        {/* User Avatar Button */}
-        <button
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-noir bg-bg-surface text-text-secondary hover:border-text-primary hover:text-text-primary transition-colors"
-          aria-label="User profile"
-        >
-          <User className="h-4 w-4 text-text-secondary" />
-        </button>
+        {/* User Profile Avatar with Account Options Dropdown */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsUserMenuOpen((prev) => !prev)}
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-noir bg-bg-surface text-text-secondary hover:border-text-primary hover:text-text-primary transition-colors cursor-pointer"
+            aria-label="User profile"
+          >
+            <User className="h-4 w-4 text-text-secondary" />
+          </button>
+          {isUserMenuOpen && (
+            <div className="absolute right-0 mt-2 w-48 rounded-lg border border-noir bg-bg-surface p-2 shadow-xl z-50">
+              <div className="px-3 py-2 border-b border-noir mb-1">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-text-secondary">
+                  FP&A Analyst
+                </p>
+                <p className="font-mono text-[11px] text-text-primary truncate">
+                  analyst@firm.com
+                </p>
+              </div>
+              <Link
+                href="/login?mode=signin"
+                onClick={() => setIsUserMenuOpen(false)}
+                className="flex items-center gap-2 rounded px-3 py-1.5 font-body text-xs text-text-secondary hover:bg-bg-canvas hover:text-text-primary transition-colors"
+              >
+                Switch Account
+              </Link>
+              <Link
+                href="/login"
+                onClick={() => setIsUserMenuOpen(false)}
+                className="flex items-center gap-2 rounded px-3 py-1.5 font-body text-xs text-accent-rust hover:bg-bg-canvas transition-colors"
+              >
+                Sign Out
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

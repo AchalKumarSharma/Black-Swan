@@ -40,8 +40,11 @@ export interface ConfirmMappingResponse {
 }
 
 export interface ValidationIssue {
-  field: string;
-  issue: string;
+  field?: string;
+  issue?: string;
+  loc?: (string | number)[];
+  msg?: string;
+  [key: string]: any;
 }
 
 export interface ActiveDataset {

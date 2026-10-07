@@ -7,19 +7,25 @@ import {
   Database,
   Settings,
   ChevronRight,
+  X,
 } from "lucide-react";
 
 interface LeftRailProps {
   onNewReport?: () => void;
   onSelectReport?: (title: string) => void;
+  onSelectDataSource?: (sourceName: string) => void;
+  onOpenSettings?: () => void;
 }
 
 export const LeftRail: React.FC<LeftRailProps> = ({
   onNewReport,
   onSelectReport,
+  onSelectDataSource,
+  onOpenSettings,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeReport, setActiveReport] = useState("Q2 Gross Margin Contraction");
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   const recentToday = [
     { title: "Q2 Gross Margin Contraction", time: "12m ago" },
@@ -37,6 +43,14 @@ export const LeftRail: React.FC<LeftRailProps> = ({
     { name: "Postgres_GL_Sync", active: true, size: "128 MB" },
     { name: "Salesforce_Billing_Export", active: false, size: "Offline" },
   ];
+
+  const filteredToday = recentToday.filter((item) =>
+    item.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredWeek = recentWeek.filter((item) =>
+    item.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <aside data-lenis-prevent className="hidden lg:flex w-[260px] h-full shrink-0 flex-col justify-between overflow-y-auto border-r border-noir bg-bg-surface/70 text-text-primary p-4 relative transition-colors duration-200">
@@ -85,72 +99,84 @@ export const LeftRail: React.FC<LeftRailProps> = ({
         {/* Recent Reports Groups */}
         <div className="flex flex-col gap-4">
           {/* Today Group */}
-          <div>
-            <div className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-text-secondary">
-              Today
-            </div>
-            <div className="flex flex-col gap-1">
-              {recentToday.map((item) => (
-                <button
-                  key={item.title}
-                  onClick={() => {
-                    setActiveReport(item.title);
-                    if (onSelectReport) onSelectReport(item.title);
-                  }}
-                  className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-left font-body text-xs transition-colors ${
-                    activeReport === item.title
-                      ? "bg-accent-contrast text-bg-canvas font-semibold"
-                      : "text-text-secondary hover:bg-bg-surface hover:text-text-primary"
-                  }`}
-                >
-                  <span className="truncate pr-2">{item.title}</span>
-                  <span
-                    className={`shrink-0 text-[10px] ${
+          {filteredToday.length > 0 && (
+            <div>
+              <div className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-text-secondary">
+                Today
+              </div>
+              <div className="flex flex-col gap-1">
+                {filteredToday.map((item) => (
+                  <button
+                    key={item.title}
+                    type="button"
+                    onClick={() => {
+                      setActiveReport(item.title);
+                      if (onSelectReport) onSelectReport(item.title);
+                    }}
+                    className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-left font-body text-xs transition-colors cursor-pointer ${
                       activeReport === item.title
-                        ? "text-bg-canvas/70"
-                        : "text-text-muted"
+                        ? "bg-accent-contrast text-bg-canvas font-semibold"
+                        : "text-text-secondary hover:bg-bg-surface hover:text-text-primary"
                     }`}
                   >
-                    {item.time}
-                  </span>
-                </button>
-              ))}
+                    <span className="truncate pr-2">{item.title}</span>
+                    <span
+                      className={`shrink-0 text-[10px] ${
+                        activeReport === item.title
+                          ? "text-bg-canvas/70"
+                          : "text-text-muted"
+                      }`}
+                    >
+                      {item.time}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Previous 7 Days Group */}
-          <div>
-            <div className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-text-secondary">
-              Previous 7 Days
-            </div>
-            <div className="flex flex-col gap-1">
-              {recentWeek.map((item) => (
-                <button
-                  key={item.title}
-                  onClick={() => {
-                    setActiveReport(item.title);
-                    if (onSelectReport) onSelectReport(item.title);
-                  }}
-                  className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-left font-body text-xs transition-colors ${
-                    activeReport === item.title
-                      ? "bg-accent-contrast text-bg-canvas font-semibold"
-                      : "text-text-secondary hover:bg-bg-surface hover:text-text-primary"
-                  }`}
-                >
-                  <span className="truncate pr-2">{item.title}</span>
-                  <span
-                    className={`shrink-0 text-[10px] ${
+          {filteredWeek.length > 0 && (
+            <div>
+              <div className="mb-2 font-display text-[10px] font-bold uppercase tracking-widest text-text-secondary">
+                Previous 7 Days
+              </div>
+              <div className="flex flex-col gap-1">
+                {filteredWeek.map((item) => (
+                  <button
+                    key={item.title}
+                    type="button"
+                    onClick={() => {
+                      setActiveReport(item.title);
+                      if (onSelectReport) onSelectReport(item.title);
+                    }}
+                    className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-left font-body text-xs transition-colors cursor-pointer ${
                       activeReport === item.title
-                        ? "text-bg-canvas/70"
-                        : "text-text-muted"
+                        ? "bg-accent-contrast text-bg-canvas font-semibold"
+                        : "text-text-secondary hover:bg-bg-surface hover:text-text-primary"
                     }`}
                   >
-                    {item.time}
-                  </span>
-                </button>
-              ))}
+                    <span className="truncate pr-2">{item.title}</span>
+                    <span
+                      className={`shrink-0 text-[10px] ${
+                        activeReport === item.title
+                          ? "text-bg-canvas/70"
+                          : "text-text-muted"
+                      }`}
+                    >
+                      {item.time}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {filteredToday.length === 0 && filteredWeek.length === 0 && searchQuery.trim() && (
+            <div className="px-2 py-3 text-center font-mono text-[11px] text-text-muted italic border border-dashed border-noir rounded">
+              No matching inquiries found
+            </div>
+          )}
 
           {/* Data Connections Drawer */}
           <div className="border-t border-noir pt-3">
@@ -162,9 +188,15 @@ export const LeftRail: React.FC<LeftRailProps> = ({
             </div>
             <div className="flex flex-col gap-1.5">
               {dataSources.map((ds) => (
-                <div
+                <button
                   key={ds.name}
-                  className="flex items-center justify-between rounded border border-noir bg-bg-canvas px-2 py-1 text-[11px]"
+                  type="button"
+                  onClick={() => {
+                    if (onSelectDataSource) {
+                      onSelectDataSource(ds.name);
+                    }
+                  }}
+                  className="flex w-full items-center justify-between rounded border border-noir bg-bg-canvas px-2 py-1 text-[11px] hover:bg-neutral-800/50 cursor-pointer transition-colors text-left"
                 >
                   <div className="flex items-center gap-2 truncate">
                     <span
@@ -181,7 +213,7 @@ export const LeftRail: React.FC<LeftRailProps> = ({
                   <span className="text-[9px] text-text-secondary uppercase font-semibold">
                     {ds.size}
                   </span>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -205,7 +237,17 @@ export const LeftRail: React.FC<LeftRailProps> = ({
         </div>
 
         {/* Settings button */}
-        <button className="flex w-full items-center justify-between rounded px-2 py-1.5 font-body text-xs text-text-secondary hover:bg-bg-surface hover:text-text-primary transition-colors">
+        <button
+          type="button"
+          onClick={() => {
+            if (onOpenSettings) {
+              onOpenSettings();
+            } else {
+              setShowSettingsModal(true);
+            }
+          }}
+          className="flex w-full items-center justify-between rounded px-2 py-1.5 font-body text-xs text-text-secondary hover:bg-bg-surface hover:text-text-primary transition-colors cursor-pointer"
+        >
           <div className="flex items-center gap-2">
             <Settings className="h-3.5 w-3.5 text-text-secondary" />
             <span>Workspace Settings</span>
@@ -213,6 +255,59 @@ export const LeftRail: React.FC<LeftRailProps> = ({
           <ChevronRight className="h-3 w-3 text-text-secondary" />
         </button>
       </div>
+
+      {/* Workspace Configuration Modal */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#12100e]/80 backdrop-blur-xs p-4">
+          <div className="w-full max-w-sm rounded-xl border border-noir bg-bg-surface p-5 shadow-2xl relative">
+            <button
+              type="button"
+              onClick={() => setShowSettingsModal(false)}
+              className="absolute right-4 top-4 text-text-secondary hover:text-text-primary cursor-pointer"
+              aria-label="Close settings"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <div className="flex items-center gap-2 mb-3">
+              <Settings className="h-4 w-4 text-text-secondary" />
+              <h3 className="font-display text-sm font-bold uppercase tracking-wider text-text-primary">
+                Workspace Configuration
+              </h3>
+            </div>
+            <div className="space-y-2.5 font-mono text-xs">
+              <div className="flex justify-between py-1 border-b border-noir">
+                <span className="text-text-secondary">Workspace ID:</span>
+                <span className="text-text-primary truncate max-w-[170px]">00000000-0000-0000-0000-000000000001</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-noir">
+                <span className="text-text-secondary">Execution Engine:</span>
+                <span className="text-text-primary">In-Memory DuckDB</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-noir">
+                <span className="text-text-secondary">Classification:</span>
+                <span className="text-accent-rust font-bold">SECTION 007 // TOP SECRET</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-noir">
+                <span className="text-text-secondary">Orchestration:</span>
+                <span className="text-text-primary">Agent M (Deterministic)</span>
+              </div>
+              <div className="flex justify-between py-1">
+                <span className="text-text-secondary">Status:</span>
+                <span className="text-emerald-500 font-bold">SYSTEM ACTIVE</span>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowSettingsModal(false)}
+                className="rounded border border-noir bg-bg-canvas px-3.5 py-1.5 font-body text-xs font-bold uppercase tracking-wider text-text-secondary hover:text-text-primary cursor-pointer transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 };
