@@ -147,13 +147,13 @@ function LoginTerminal() {
 
       {/* Header section */}
       <div className="mb-8">
-        <div className="border border-white/10 px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-widest text-neutral-400 mb-4 inline-block">
+        <div className="inline-block mb-3 px-2.5 py-1 border border-[#2a221b] bg-[#14100d] rounded font-mono text-[10px] tracking-widest text-[#c4aa93] uppercase select-none">
           AGENTIC AI FINANCIAL INTELLIGENCE
         </div>
-        <h1 className="font-mono text-xl sm:text-2xl font-bold tracking-tight text-text-primary uppercase">
+        <h1 className="font-mono text-2xl sm:text-3xl font-bold tracking-tight text-[#f5f2eb] uppercase mb-1.5">
           {mode === "signup" ? "WELCOME!" : "WELCOME BACK!"}
         </h1>
-        <p className="text-xs text-neutral-500 mt-1">
+        <p className="font-mono text-xs text-[#a39486] mb-6">
           Verify corporate credentials to access workspace ledger.
         </p>
       </div>
@@ -211,7 +211,7 @@ function LoginTerminal() {
       <form onSubmit={handleSubmit} className="space-y-4">
         {isSignUp && (
           <div>
-            <label className="block font-mono text-[10px] uppercase tracking-widest text-neutral-400 mb-1.5">
+            <label className="block font-mono text-[10px] uppercase tracking-wider text-[#b89b82] mb-1.5">
               ORGANIZATION / FIRM
             </label>
             <input
@@ -226,7 +226,7 @@ function LoginTerminal() {
         )}
 
         <div>
-          <label className="block font-mono text-[10px] uppercase tracking-widest text-neutral-400 mb-1.5">
+          <label className="block font-mono text-[10px] uppercase tracking-wider text-[#b89b82] mb-1.5">
             WORK EMAIL
           </label>
           <input
@@ -240,7 +240,7 @@ function LoginTerminal() {
         </div>
 
         <div>
-          <label className="block font-mono text-[10px] uppercase tracking-widest text-neutral-400 mb-1.5">
+          <label className="block font-mono text-[10px] uppercase tracking-wider text-[#b89b82] mb-1.5">
             SECURITY KEY / PASSWORD
           </label>
           <input
