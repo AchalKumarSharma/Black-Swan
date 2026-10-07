@@ -165,7 +165,7 @@ function LoginTerminal() {
           onClick={handleSelectSignIn}
           className={
             !isSignUp
-              ? "text-white border-b-2 border-[#C25E3E] pb-2 font-mono text-xs tracking-wider cursor-pointer transition-colors"
+              ? "text-white border-b-2 border-[#d97746] pb-2 font-mono text-xs tracking-wider cursor-pointer transition-colors"
               : "text-neutral-500 hover:text-neutral-300 pb-2 font-mono text-xs tracking-wider cursor-pointer transition-colors"
           }
         >
@@ -176,7 +176,7 @@ function LoginTerminal() {
           onClick={handleSelectSignUp}
           className={
             isSignUp
-              ? "text-white border-b-2 border-[#C25E3E] pb-2 font-mono text-xs tracking-wider cursor-pointer transition-colors"
+              ? "text-white border-b-2 border-[#d97746] pb-2 font-mono text-xs tracking-wider cursor-pointer transition-colors"
               : "text-neutral-500 hover:text-neutral-300 pb-2 font-mono text-xs tracking-wider cursor-pointer transition-colors"
           }
         >
@@ -220,7 +220,7 @@ function LoginTerminal() {
               onChange={(e) => setOrganization(e.target.value)}
               placeholder="e.g. Apex Strategic Partners"
               required={isSignUp}
-              className="w-full rounded bg-[#0F0F0F] border border-neutral-800 px-3.5 py-2 font-mono text-xs text-neutral-200 placeholder-neutral-600 focus:border-[#C25E3E]/70 focus:outline-none transition-colors"
+              className="w-full rounded bg-[#13100d]/90 border border-[#2a221b] px-3.5 py-2 font-mono text-xs text-[#f2ede4] placeholder-[#8c7b6e]/60 focus:border-[#b89b82]/60 focus:ring-1 focus:ring-[#b89b82]/30 focus:outline-none transition-all"
             />
           </div>
         )}
@@ -235,7 +235,7 @@ function LoginTerminal() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="analyst@firm.com"
             required
-            className="w-full rounded bg-[#0F0F0F] border border-neutral-800 px-3.5 py-2 font-mono text-xs text-neutral-200 placeholder-neutral-600 focus:border-[#C25E3E]/70 focus:outline-none transition-colors"
+            className="w-full rounded bg-[#13100d]/90 border border-[#2a221b] px-3.5 py-2 font-mono text-xs text-[#f2ede4] placeholder-[#8c7b6e]/60 focus:border-[#b89b82]/60 focus:ring-1 focus:ring-[#b89b82]/30 focus:outline-none transition-all"
           />
         </div>
 
@@ -249,7 +249,7 @@ function LoginTerminal() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••••••"
             required
-            className="w-full rounded bg-[#0F0F0F] border border-neutral-800 px-3.5 py-2 font-mono text-xs text-neutral-200 placeholder-neutral-600 focus:border-[#C25E3E]/70 focus:outline-none transition-colors"
+            className="w-full rounded bg-[#13100d]/90 border border-[#2a221b] px-3.5 py-2 font-mono text-xs text-[#f2ede4] placeholder-[#8c7b6e]/60 focus:border-[#b89b82]/60 focus:ring-1 focus:ring-[#b89b82]/30 focus:outline-none transition-all"
           />
         </div>
 
@@ -257,7 +257,7 @@ function LoginTerminal() {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full py-2.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 hover:border-neutral-500 text-neutral-200 font-mono text-xs uppercase tracking-widest transition-all mt-4 cursor-pointer active:scale-[0.99] disabled:opacity-50"
+          className="w-full py-2.5 rounded bg-[#1c1612] hover:bg-[#251e18] text-[#f2ede4] border border-[#3d3126] hover:border-[#b89b82]/40 transition-colors uppercase font-mono text-xs tracking-widest mt-4 cursor-pointer active:scale-[0.99] disabled:opacity-50"
         >
           {isLoading
             ? "PROCESSING CLEARANCE..."
@@ -295,7 +295,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#070707] text-neutral-200 flex flex-col lg:flex-row">
       {/* A. LEFT PANE (Desktop 50/50 Split) */}
-      <div className="relative hidden lg:block lg:w-1/2 h-full min-h-screen overflow-hidden border-r border-noir bg-bg-canvas">
+      <div className="relative hidden lg:block lg:w-1/2 h-full min-h-screen overflow-hidden border-r border-[#221c17] bg-bg-canvas">
         {/* Top: Black Swan logo + "BLACK SWAN" monospace */}
         <div className="absolute top-6 left-6 z-20 flex items-center gap-3">
           <BlackSwanLogo className="w-6 h-6 text-white" />
@@ -312,7 +312,15 @@ export default function LoginPage() {
       </div>
 
       {/* B. RIGHT PANE (Login Terminal) */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-4 sm:p-8 min-w-0 bg-[#0A0A0A]">
+      <div className="flex-1 flex flex-col justify-center items-center px-6 sm:px-12 lg:px-16 min-h-screen bg-[#0b0907] relative overflow-hidden">
+        {/* Ambient Moonlight Ambient Glow from Left Artwork */}
+        <div
+          className="pointer-events-none absolute inset-0 select-none opacity-40"
+          style={{
+            background: "radial-gradient(ellipse 80% 60% at 10% 20%, rgba(184, 155, 130, 0.08) 0%, rgba(12, 10, 8, 0) 70%)"
+          }}
+        />
+
         <Suspense
           fallback={
             <div className="text-neutral-500 font-mono text-xs">
