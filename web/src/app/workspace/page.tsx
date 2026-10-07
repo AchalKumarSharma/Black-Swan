@@ -56,6 +56,7 @@ function WorkspaceView() {
   const [mappingModalData, setMappingModalData] = useState<UploadResponse | null>(null);
   const [ingestionErrors, setIngestionErrors] = useState<ValidationIssue[]>([]);
   const [ingestionToast, setIngestionToast] = useState<string | null>(null);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
   // Agent Data Contracts State & Appended Investigation History
   const [reports, setReports] = useState<ReportBlock[]>([]);
@@ -703,6 +704,33 @@ function WorkspaceView() {
     "Run anomaly detection on South region COGS.",
   ];
 
+  const handleSelectDataSource = async (sourceName: string) => {
+    if (sourceName === "SaaS_Q2_Financials.csv") {
+      try {
+        const res = await fetch("/SaaS_Q2_Financials.csv");
+        if (!res.ok) return;
+        const blob = await res.blob();
+        const file = new File([blob], "SaaS_Q2_Financials.csv", { type: "text/csv" });
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("workspace_id", "00000000-0000-0000-0000-000000000001");
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+        const uploadRes = await fetch(`${apiBase}/api/v1/data/upload`, {
+          method: "POST",
+          body: formData,
+        });
+        if (uploadRes.ok) {
+          const data = await uploadRes.json();
+          handleUploadSuccess(data);
+        }
+      } catch (err) {
+        console.error("Data source load failed:", err);
+      }
+    } else {
+      setIngestionToast(`Data connection "${sourceName}" is managed by enterprise sync.`);
+    }
+  };
+
   const estimatedRemaining = Math.max(0, 6.0 - elapsedSeconds);
 
   return (
@@ -720,43 +748,64 @@ function WorkspaceView() {
             : null
         }
         onUploadNew={() => setShowUploadModal(true)}
+        onOpenMobileMenu={() => setIsMobileDrawerOpen(true)}
       />
+
+      {/* Mobile Slide-Out Navigation Drawer */}
+      {isMobileDrawerOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-xs transition-opacity"
+            onClick={() => setIsMobileDrawerOpen(false)}
+          />
+          {/* Slide Panel */}
+          <div className="relative z-50 w-72 max-w-[80vw] h-full bg-bg-canvas border-r border-noir flex flex-col p-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 mb-2 border-b border-noir">
+              <span className="font-mono text-xs font-bold uppercase tracking-wider text-text-primary">
+                Dossier Navigation
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsMobileDrawerOpen(false)}
+                className="text-text-secondary hover:text-text-primary text-base p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto min-w-0">
+              <LeftRail
+                className="flex w-full h-full flex-col justify-between text-text-primary relative"
+                onNewReport={() => {
+                  setIsMobileDrawerOpen(false);
+                  handleNewReport();
+                }}
+                onSelectReport={(title) => {
+                  setIsMobileDrawerOpen(false);
+                  setQuery(title);
+                  handleStartAnalysis(title);
+                }}
+                onSelectDataSource={async (sourceName) => {
+                  setIsMobileDrawerOpen(false);
+                  handleSelectDataSource(sourceName);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 2. Workspace Body: Left Rail + Main Canvas */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left Rail (Pinned in place, internally scrollable) */}
         <LeftRail
+          className="hidden md:flex w-[260px] h-full shrink-0 flex-col justify-between overflow-y-auto border-r border-noir bg-bg-surface/70 text-text-primary p-4 relative transition-colors duration-200"
           onNewReport={handleNewReport}
           onSelectReport={(title) => {
             setQuery(title);
             handleStartAnalysis(title);
           }}
-          onSelectDataSource={async (sourceName) => {
-            if (sourceName === "SaaS_Q2_Financials.csv") {
-              try {
-                const res = await fetch("/SaaS_Q2_Financials.csv");
-                if (!res.ok) return;
-                const blob = await res.blob();
-                const file = new File([blob], "SaaS_Q2_Financials.csv", { type: "text/csv" });
-                const formData = new FormData();
-                formData.append("file", file);
-                formData.append("workspace_id", "00000000-0000-0000-0000-000000000001");
-                const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-                const uploadRes = await fetch(`${apiBase}/api/v1/data/upload`, {
-                  method: "POST",
-                  body: formData,
-                });
-                if (uploadRes.ok) {
-                  const data = await uploadRes.json();
-                  handleUploadSuccess(data);
-                }
-              } catch (err) {
-                console.error("Data source load failed:", err);
-              }
-            } else {
-              setIngestionToast(`Data connection "${sourceName}" is managed by enterprise sync.`);
-            }
-          }}
+          onSelectDataSource={handleSelectDataSource}
         />
 
         {/* Main Canvas (Independently scrollable with Lenis smooth momentum) */}
@@ -935,21 +984,21 @@ function WorkspaceView() {
             {!isRunning && reports.length === 0 && activeDataset && (
               <div className="space-y-6">
                 {/* Active Dataset Overview Pill Strip */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-xl border border-noir bg-bg-surface p-3.5 sm:p-4 text-xs min-w-0">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-noir bg-bg-canvas text-accent-rust">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-xl border border-noir bg-bg-surface p-3.5 sm:p-4 text-xs min-w-0 w-full">
+                  <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-noir bg-bg-canvas text-accent-rust">
                       <FileSpreadsheet className="h-4 w-4" />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold text-text-primary">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-start justify-between gap-2 min-w-0 w-full">
+                        <span className="min-w-0 break-all sm:break-normal text-xs sm:text-sm font-mono font-bold text-text-primary">
                           {activeDataset.fileName}
                         </span>
-                        <span className="rounded bg-emerald-950/40 border border-emerald-800/40 px-1.5 py-0.2 font-mono text-[10px] text-emerald-300 uppercase">
+                        <span className="shrink-0 text-[9px] sm:text-[10px] whitespace-nowrap px-2 py-0.5 rounded bg-emerald-950/40 border border-emerald-800/40 font-mono text-emerald-300 uppercase">
                           DUCKDB ATTACHED
                         </span>
                       </div>
-                      <div className="mt-0.5 flex flex-wrap items-center gap-2.5 font-body text-[11px] text-text-secondary">
+                      <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[11px] sm:text-xs text-text-secondary leading-relaxed min-w-0 w-full break-words">
                         <span>{activeDataset.rowCount.toLocaleString()} records</span>
                         <span>•</span>
                         <span>
@@ -990,7 +1039,7 @@ function WorkspaceView() {
                   <button
                     type="button"
                     onClick={() => setShowUploadModal(true)}
-                    className="inline-flex items-center gap-1.5 rounded border border-noir bg-bg-canvas px-3 py-1.5 font-body text-xs font-semibold text-text-secondary hover:border-text-primary hover:text-text-primary transition-colors cursor-pointer"
+                    className="shrink-0 inline-flex items-center gap-1.5 rounded border border-noir bg-bg-canvas px-3 py-1.5 font-body text-xs font-semibold text-text-secondary hover:border-text-primary hover:text-text-primary transition-colors cursor-pointer"
                   >
                     <RefreshCw className="h-3 w-3" />
                     <span>Replace Dataset</span>

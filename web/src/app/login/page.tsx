@@ -220,7 +220,7 @@ function LoginTerminal() {
               onChange={(e) => setOrganization(e.target.value)}
               placeholder="e.g. Apex Strategic Partners"
               required={isSignUp}
-              className="w-full rounded bg-[#13100d]/90 border border-[#2a221b] px-3.5 py-2 font-mono text-xs text-[#f2ede4] placeholder-[#8c7b6e]/60 focus:border-[#b89b82]/60 focus:ring-1 focus:ring-[#b89b82]/30 focus:outline-none transition-all"
+              className="w-full rounded bg-[#13100d]/90 border border-[#2a221b] px-3.5 py-2 font-mono text-base sm:text-xs text-[#f2ede4] placeholder-[#8c7b6e]/60 focus:border-[#b89b82]/60 focus:ring-1 focus:ring-[#b89b82]/30 focus:outline-none transition-all"
             />
           </div>
         )}
@@ -235,7 +235,7 @@ function LoginTerminal() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="analyst@firm.com"
             required
-            className="w-full rounded bg-[#13100d]/90 border border-[#2a221b] px-3.5 py-2 font-mono text-xs text-[#f2ede4] placeholder-[#8c7b6e]/60 focus:border-[#b89b82]/60 focus:ring-1 focus:ring-[#b89b82]/30 focus:outline-none transition-all"
+            className="w-full rounded bg-[#13100d]/90 border border-[#2a221b] px-3.5 py-2 font-mono text-base sm:text-xs text-[#f2ede4] placeholder-[#8c7b6e]/60 focus:border-[#b89b82]/60 focus:ring-1 focus:ring-[#b89b82]/30 focus:outline-none transition-all"
           />
         </div>
 
@@ -249,7 +249,7 @@ function LoginTerminal() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••••••"
             required
-            className="w-full rounded bg-[#13100d]/90 border border-[#2a221b] px-3.5 py-2 font-mono text-xs text-[#f2ede4] placeholder-[#8c7b6e]/60 focus:border-[#b89b82]/60 focus:ring-1 focus:ring-[#b89b82]/30 focus:outline-none transition-all"
+            className="w-full rounded bg-[#13100d]/90 border border-[#2a221b] px-3.5 py-2 font-mono text-base sm:text-xs text-[#f2ede4] placeholder-[#8c7b6e]/60 focus:border-[#b89b82]/60 focus:ring-1 focus:ring-[#b89b82]/30 focus:outline-none transition-all"
           />
         </div>
 
@@ -312,7 +312,7 @@ export default function LoginPage() {
       </div>
 
       {/* B. RIGHT PANE (Login Terminal) */}
-      <div className="flex-1 flex flex-col justify-center items-center px-6 sm:px-12 lg:px-16 min-h-screen bg-[#0b0907] relative overflow-hidden">
+      <div className="flex-1 flex flex-col justify-center items-center px-4 sm:px-12 lg:px-16 py-8 min-h-screen bg-[#0b0907] relative overflow-y-auto">
         {/* Ambient Moonlight Ambient Glow from Left Artwork */}
         <div
           className="pointer-events-none absolute inset-0 select-none opacity-40"

@@ -15,6 +15,7 @@ interface LeftRailProps {
   onSelectReport?: (title: string) => void;
   onSelectDataSource?: (sourceName: string) => void;
   onOpenSettings?: () => void;
+  className?: string;
 }
 
 export const LeftRail: React.FC<LeftRailProps> = ({
@@ -22,6 +23,7 @@ export const LeftRail: React.FC<LeftRailProps> = ({
   onSelectReport,
   onSelectDataSource,
   onOpenSettings,
+  className,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeReport, setActiveReport] = useState("Q2 Gross Margin Contraction");
@@ -53,7 +55,13 @@ export const LeftRail: React.FC<LeftRailProps> = ({
   );
 
   return (
-    <aside data-lenis-prevent className="hidden lg:flex w-[260px] h-full shrink-0 flex-col justify-between overflow-y-auto border-r border-noir bg-bg-surface/70 text-text-primary p-4 relative transition-colors duration-200">
+    <aside
+      data-lenis-prevent
+      className={
+        className ??
+        "hidden md:flex w-[260px] h-full shrink-0 flex-col justify-between overflow-y-auto border-r border-noir bg-bg-surface/70 text-text-primary p-4 relative transition-colors duration-200"
+      }
+    >
       {/* Cold War Telemetry Coordinates Ruler along inner rail border */}
       <div
         className="pointer-events-none select-none absolute right-0 top-0 bottom-0 w-3 overflow-hidden opacity-[0.14] flex flex-col justify-between py-6"

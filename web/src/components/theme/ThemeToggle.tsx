@@ -19,8 +19,8 @@ export const ThemeToggle: React.FC<{ className?: string }> = ({ className = "" }
         disabled
         className={`h-7 px-2.5 text-xs font-body font-bold uppercase tracking-wider border border-noir text-text-secondary inline-flex items-center gap-1.5 rounded transition-colors opacity-70 ${className}`}
       >
-        <Moon className="h-3 w-3" />
-        <span>VAULT [DARK]</span>
+        <Moon className="h-3 w-3 shrink-0" />
+        <span className="hidden xs:inline">VAULT [DARK]</span>
       </button>
     );
   }
@@ -36,13 +36,13 @@ export const ThemeToggle: React.FC<{ className?: string }> = ({ className = "" }
     >
       {isDark ? (
         <>
-          <Sun className="h-3 w-3 text-accent-rust" />
-          <span>PARCHMENT [LIGHT]</span>
+          <Sun className="h-3 w-3 text-accent-rust shrink-0" />
+          <span className="hidden xs:inline">PARCHMENT [LIGHT]</span>
         </>
       ) : (
         <>
-          <Moon className="h-3 w-3 text-text-secondary" />
-          <span>VAULT [DARK]</span>
+          <Moon className="h-3 w-3 text-text-secondary shrink-0" />
+          <span className="hidden xs:inline">VAULT [DARK]</span>
         </>
       )}
     </button>

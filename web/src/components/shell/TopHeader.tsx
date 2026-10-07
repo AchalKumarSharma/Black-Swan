@@ -16,12 +16,14 @@ interface TopHeaderProps {
   isSystemLive?: boolean;
   activeDataset?: ActiveDatasetInfo | null;
   onUploadNew?: () => void;
+  onOpenMobileMenu?: () => void;
 }
 
 export const TopHeader: React.FC<TopHeaderProps> = ({
   isSystemLive = true,
   activeDataset,
   onUploadNew,
+  onOpenMobileMenu,
 }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
@@ -29,10 +31,22 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
     <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between border-b border-noir bg-bg-canvas/95 px-3 sm:px-6 backdrop-blur-sm transition-colors duration-200">
       {/* Left: Brand Identity & Mode Tag */}
       <div className="flex items-center gap-2.5 sm:gap-4">
+        {/* Mobile Navigation Trigger */}
+        <button
+          type="button"
+          onClick={onOpenMobileMenu}
+          className="md:hidden inline-flex items-center justify-center p-1.5 -ml-1 mr-2 text-text-secondary hover:text-text-primary focus:outline-none cursor-pointer"
+          aria-label="Open Navigation Drawer"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+
         {/* Swan Silhouette Mark + Brand Name matching Landing Page */}
-        <Link href="/" className="flex items-center gap-2 sm:gap-2.5 group">
-          <BlackSwanLogo className="w-6 h-6 sm:w-7 sm:h-7 text-text-primary transition-colors" />
-          <span className="font-display text-xl sm:text-2xl font-bold uppercase tracking-tight text-text-primary">
+        <Link href="/" className="flex items-center gap-2 sm:gap-2.5 group shrink-0">
+          <BlackSwanLogo className="w-6 h-6 sm:w-7 sm:h-7 text-text-primary transition-colors shrink-0" />
+          <span className="whitespace-nowrap font-mono text-xs sm:text-sm font-bold tracking-wider text-text-primary">
             Black Swan
           </span>
         </Link>
@@ -78,12 +92,12 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
 
 
       {/* Right Utility Bar */}
-      <div className="flex items-center gap-3 sm:gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
         {/* Obsidian Vault / Parchment Mode Toggle */}
-        <ThemeToggle />
+        <ThemeToggle className="shrink-0" />
 
         {/* Status Indicator */}
-        <div className="flex items-center gap-2 text-xs font-body uppercase tracking-wider text-text-secondary">
+        <div className="hidden xs:inline-flex items-center gap-1.5 text-xs font-body uppercase tracking-wider text-text-secondary">
           <span
             className={`inline-block h-2 w-2 rounded-full border border-text-secondary ${
               isSystemLive ? "bg-text-secondary" : "bg-transparent"

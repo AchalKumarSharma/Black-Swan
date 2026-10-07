@@ -16,6 +16,7 @@ export default function LandingPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDocsOpen, setIsDocsOpen] = useState(false);
   const [isSignInOpen, setIsSignInOpen] = useState(false);
+  const [isLandingDrawerOpen, setIsLandingDrawerOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"signin" | "signup">("signin");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
@@ -41,17 +42,28 @@ export default function LandingPage() {
       {/* 1. Top Navigation */}
       <nav className="relative z-50 w-full border-b border-noir bg-bg-canvas/85 backdrop-blur-md px-4 sm:px-8 py-3.5 transition-colors duration-200">
         <div className="mx-auto flex max-w-6xl items-center justify-between">
-          {/* Left: Brand Logo */}
-          <Link href="/" className="flex items-center gap-2 group cursor-pointer">
-            <BlackSwanLogo className="w-6 h-6 text-text-primary transition-transform group-hover:scale-105" />
-            <span className="font-mono text-xs font-bold uppercase tracking-widest text-text-primary">
-              Black Swan
-            </span>
-          </Link>
+          {/* Left: Brand Logo & Mobile Drawer Toggle */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsLandingDrawerOpen(true)}
+              className="md:hidden inline-flex items-center justify-center p-1.5 -ml-1 text-text-secondary hover:text-text-primary focus:outline-none cursor-pointer"
+              aria-label="Open Navigation Menu"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <Link href="/" className="flex items-center gap-2 group cursor-pointer">
+              <BlackSwanLogo className="w-6 h-6 text-text-primary transition-transform group-hover:scale-105" />
+              <span className="font-mono text-xs font-bold uppercase tracking-widest text-text-primary">
+                Black Swan
+              </span>
+            </Link>
+          </div>
 
-          {/* Center: Primary Navigation Cluster (Equalized py-1 and border-b for perfect vertical alignment) */}
+          {/* Center: Desktop Navigation Cluster */}
           <div className="hidden md:flex items-center gap-8 font-mono text-xs uppercase tracking-wider">
-            {/* Home (Active Indicator) */}
             <Link
               href="/"
               onClick={(e) => {
@@ -62,8 +74,6 @@ export default function LandingPage() {
             >
               HOME
             </Link>
-
-            {/* Reports (Triggers Sign In Modal instead of 404) */}
             <button
               type="button"
               onClick={() => setIsSignInOpen(true)}
@@ -71,8 +81,6 @@ export default function LandingPage() {
             >
               REPORTS
             </button>
-
-            {/* Docs */}
             <button
               type="button"
               onClick={() => setIsDocsOpen(true)}
@@ -80,8 +88,6 @@ export default function LandingPage() {
             >
               DOCS
             </button>
-
-            {/* Sign In */}
             <button
               type="button"
               onClick={() => setIsSignInOpen(true)}
@@ -89,8 +95,6 @@ export default function LandingPage() {
             >
               SIGN IN
             </button>
-
-            {/* Community */}
             <a
               href="https://github.com"
               target="_blank"
@@ -102,15 +106,12 @@ export default function LandingPage() {
           </div>
 
           {/* Right: Actions & Theme Controls */}
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:inline-flex">
-              <ThemeToggle />
-            </div>
-            {/* New Report (Triggers Sign In Modal before granting workspace access) */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
             <button
               type="button"
               onClick={() => setIsSignInOpen(true)}
-              className="inline-flex items-center justify-center px-3.5 py-1.5 text-xs font-mono font-medium uppercase tracking-wider rounded border border-noir bg-text-primary text-bg-canvas hover:opacity-90 transition-opacity shadow-none cursor-pointer"
+              className="inline-flex items-center justify-center px-3 py-1.5 sm:px-3.5 text-[11px] sm:text-xs font-mono font-medium uppercase tracking-wider rounded border border-noir bg-text-primary text-bg-canvas hover:opacity-90 transition-opacity cursor-pointer shrink-0"
             >
               NEW REPORT
             </button>
@@ -118,11 +119,82 @@ export default function LandingPage() {
         </div>
       </nav>
 
+      {/* Mobile Slide-Over Navigation Drawer */}
+      {isLandingDrawerOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex">
+          <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-xs transition-opacity"
+            onClick={() => setIsLandingDrawerOpen(false)}
+          />
+          <div className="relative z-50 w-72 max-w-[80vw] h-full bg-bg-canvas border-r border-noir flex flex-col p-5 shadow-2xl">
+            <div className="flex items-center justify-between pb-4 mb-4 border-b border-noir">
+              <span className="font-mono text-xs font-bold uppercase tracking-wider text-text-primary">
+                Terminal Menu
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsLandingDrawerOpen(false)}
+                className="text-text-secondary hover:text-text-primary text-base p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex flex-col gap-4 font-mono text-xs uppercase tracking-wider">
+              <Link
+                href="/"
+                onClick={() => setIsLandingDrawerOpen(false)}
+                className="text-text-primary py-1 border-b border-noir/40"
+              >
+                Home
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLandingDrawerOpen(false);
+                  setIsSignInOpen(true);
+                }}
+                className="text-left text-text-secondary hover:text-text-primary py-1 border-b border-noir/40 cursor-pointer"
+              >
+                Reports
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLandingDrawerOpen(false);
+                  setIsDocsOpen(true);
+                }}
+                className="text-left text-text-secondary hover:text-text-primary py-1 border-b border-noir/40 cursor-pointer"
+              >
+                Docs
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLandingDrawerOpen(false);
+                  setIsSignInOpen(true);
+                }}
+                className="text-left text-text-secondary hover:text-text-primary py-1 border-b border-noir/40 cursor-pointer"
+              >
+                Sign In
+              </button>
+              <a
+                href="https://github.com"
+                target="_blank"
+                rel="noreferrer"
+                className="text-text-secondary hover:text-text-primary py-1 border-b border-noir/40"
+              >
+                Community
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MI6 / James Bond Cold War Archival Intelligence Dossier Watermark */}
       <JamesBondArchivalWatermark />
 
       {/* Main Container matching the reference layout */}
-      <main className="mx-auto w-full max-w-6xl px-3.5 sm:px-10 pt-6 sm:pt-7 md:pt-9 pb-6 sm:pb-8 flex-1 flex flex-col justify-start relative z-10">
+      <main className="mx-auto w-full max-w-6xl px-3 sm:px-6 py-4 sm:py-8 flex flex-col justify-between min-h-[calc(100vh-65px)] min-w-0 relative z-10">
 
         {/* 2. Top-Secret Stamp Watermark & Interactive Tier Selector */}
         <div className="relative flex flex-col items-start gap-2 mb-3.5 z-10 pt-4 sm:pt-8">
@@ -225,8 +297,8 @@ export default function LandingPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Ask a question about your financial data..."
-                className="w-full bg-transparent pl-11 pr-24 py-3.5 font-body text-sm text-text-primary placeholder:text-text-secondary/70 focus:outline-none"
+                placeholder="Ask about financial data..."
+                className="w-full bg-transparent pl-11 pr-20 sm:pr-24 py-3.5 font-body text-xs sm:text-sm text-text-primary placeholder:text-text-secondary/70 focus:outline-none truncate placeholder:truncate"
               />
               <button
                 type="submit"

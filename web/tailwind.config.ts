@@ -9,6 +9,9 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      screens: {
+        xs: "400px",
+      },
       colors: {
         "bg-canvas": "var(--bg-canvas)",
         "bg-surface": "var(--bg-surface)",
