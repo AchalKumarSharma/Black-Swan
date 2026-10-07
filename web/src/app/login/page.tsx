@@ -148,10 +148,10 @@ function LoginTerminal() {
       {/* Header section */}
       <div className="mb-8">
         <div className="border border-white/10 px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-widest text-neutral-400 mb-4 inline-block">
-          SYSTEM CLEARANCE // SECTION 007
+          AGENTIC AI FINANCIAL INTELLIGENCE
         </div>
-        <h1 className="font-mono text-lg tracking-widest text-neutral-100 uppercase font-bold">
-          CLEARANCE TERMINAL
+        <h1 className="font-mono text-xl sm:text-2xl font-bold tracking-tight text-text-primary uppercase">
+          {mode === "signup" ? "WELCOME!" : "WELCOME BACK!"}
         </h1>
         <p className="text-xs text-neutral-500 mt-1">
           Verify corporate credentials to access workspace ledger.
@@ -274,7 +274,7 @@ function LoginTerminal() {
           onClick={handleGuestClearance}
           className="font-mono text-xs text-neutral-400 hover:text-white transition-colors cursor-pointer inline-block"
         >
-          [ Continue via Guest Sandbox Clearance → ]
+          [ Continue via Guest Sandbox → ]
         </button>
       </div>
 
@@ -295,35 +295,20 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#070707] text-neutral-200 flex flex-col lg:flex-row">
       {/* A. LEFT PANE (Desktop 50/50 Split) */}
-      <div className="lg:flex hidden lg:w-1/2 flex-col justify-between p-12 border-r border-white/5 bg-[#050505]">
+      <div className="relative hidden lg:block lg:w-1/2 h-full min-h-screen overflow-hidden border-r border-noir bg-bg-canvas">
         {/* Top: Black Swan logo + "BLACK SWAN" monospace */}
-        <div className="flex items-center gap-3">
+        <div className="absolute top-6 left-6 z-20 flex items-center gap-3">
           <BlackSwanLogo className="w-6 h-6 text-white" />
           <span className="font-mono text-xs tracking-widest text-neutral-300 uppercase font-bold">
             BLACK SWAN
           </span>
         </div>
 
-        {/* Middle: London night visual framed in archival copper/charcoal border */}
-        <div className="my-auto py-8">
-          <div className="rounded-sm overflow-hidden bg-bg-surface shadow-2xl">
-            <img
-              src="/login-hero.png"
-              alt="Black Swan Terminal"
-              className="w-full h-full object-cover rounded-sm border border-white/10"
-            />
-          </div>
-        </div>
-
-        {/* Bottom: Minimalist editorial quote */}
-        <div>
-          <div className="font-serif italic text-sm text-neutral-300 leading-relaxed mb-2">
-            &ldquo;Forensic visibility when the market turns.&rdquo;
-          </div>
-          <div className="text-[11px] font-mono text-neutral-500 tracking-wider uppercase">
-            CLASSIFIED // FP&amp;A INTELLIGENCE PROTOCOL
-          </div>
-        </div>
+        <img
+          src="/auth-balcony.png"
+          alt="Black Swan Dossier Visual"
+          className="w-full h-full object-cover object-center select-none"
+        />
       </div>
 
       {/* B. RIGHT PANE (Login Terminal) */}
