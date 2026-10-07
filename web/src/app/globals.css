@@ -4,33 +4,35 @@
 
 @layer base {
   :root {
-    --font-display: "Helvetica Neue Condensed", "Helvetica Neue", -apple-system, BlinkMacSystemFont, "Impact", sans-serif;
-    --font-body: "Archivo Narrow", sans-serif;
-    --font-sans: var(--font-body);
+    /* Archival Bone Canvas & Crisp Elevated Paper */
+    --bg-canvas: #f7f5f0;                  /* Soft archival bone canvas */
+    --bg-surface: #ffffff;                 /* Pure elevated card surface (crisp contrast) */
+    --bg-surface-subtle: #f0ede6;          /* Secondary callout / subtle inset tint */
 
-    --bg-canvas: #f4f0e8;                  /* Aged Parchment */
-    --bg-surface: #ebe5d8;                 /* Elevated Card Surface */
-    --bg-surface-subtle: #f0eae0;          /* Secondary / Callout Tint */
-    --border-noir: rgba(107, 77, 58, 0.3); /* Sepia Wireframe */
-    --text-primary: #1a1613;               /* Near-Black Editorial Ink */
-    --text-secondary: #6b4d3a;             /* Muted Sepia Attributions */
-    --text-muted: #8c827a;                 /* Faint Metadata */
-    --accent-rust: #8c432a;                /* High-Priority Anomaly */
-    --accent-contrast: #1a1613;            /* Solid Black Highlights */
-    --chart-bar-primary: #1a1613;
-    --chart-bar-secondary: #4a4540;
-    --chart-grid: rgba(107, 77, 58, 0.15);
+    /* Structural Wireframes & Ink */
+    --border-noir: rgba(28, 25, 23, 0.12); /* Clean, debossed carbon rule (replaces muddy sepia) */
+    --text-primary: #181614;               /* Deep editorial obsidian ink */
+    --text-secondary: #57534e;             /* Refined warm stone / graphite telemetry */
+    --text-muted: #8c857b;                 /* Faint ledger metadata */
+
+    /* Accents & Data Visualization */
+    --accent-rust: #9a3412;                /* Rich terracotta / cinnabar anomaly warning */
+    --accent-contrast: #181614;            /* Inverted carbon action pill */
+    --chart-bar-primary: #181614;
+    --chart-bar-secondary: #57534e;
+    --chart-grid: rgba(28, 25, 23, 0.08);
     --dither-blend: multiply;
 
+    /* Theme Provider Bindings */
     --background: var(--bg-canvas);
     --foreground: var(--text-primary);
-    --color-parchment: #f4f0e8;
-    --color-parchment-light: #faf7f2;
-    --color-parchment-dark: #eae4d6;
-    --color-swan-black: #1a1613;
-    --color-swan-charcoal: #4a4540;
-    --color-swan-sepia: #6b4d3a;
-    --color-swan-rust: #8c432a;
+    --color-parchment: #f7f5f0;
+    --color-parchment-light: #ffffff;
+    --color-parchment-dark: #ebe7de;
+    --color-swan-black: #181614;
+    --color-swan-charcoal: #3e3a35;
+    --color-swan-sepia: #57534e;
+    --color-swan-rust: #9a3412;
   }
 
   .font-display-var {

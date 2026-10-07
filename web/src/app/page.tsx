@@ -38,65 +38,81 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-bg-canvas text-text-primary selection:bg-accent-contrast selection:text-bg-canvas flex flex-col relative overflow-x-hidden">
       {/* 1. Top Navigation */}
-      <nav className="relative z-50 w-full bg-[#0A0A0A]/95 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-white/5">
-        <div className="mx-auto flex max-w-6xl items-center justify-between w-full">
-          {/* Left: Exact Swan Logo Mark */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <BlackSwanLogo className="w-7 h-7 text-white transition-colors" />
+      <nav className="relative z-50 w-full border-b border-noir bg-bg-canvas/85 backdrop-blur-md px-4 sm:px-8 py-3.5 transition-colors duration-200">
+        <div className="mx-auto flex max-w-6xl items-center justify-between">
+          {/* Left: Brand Logo */}
+          <Link href="/" className="flex items-center gap-2 group cursor-pointer">
+            <BlackSwanLogo className="w-6 h-6 text-text-primary transition-transform group-hover:scale-105" />
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-text-primary">
+              Black Swan
+            </span>
           </Link>
 
-          {/* Center: Navigation Links (Hidden on mobile) */}
-          <div className="hidden md:flex items-center gap-6 font-body text-xs font-bold uppercase tracking-widest">
+          {/* Center: Primary Navigation Cluster (Equalized py-1 and border-b for perfect vertical alignment) */}
+          <div className="hidden md:flex items-center gap-8 font-mono text-xs uppercase tracking-wider">
+            {/* Home (Active Indicator) */}
             <Link
               href="/"
               onClick={(e) => {
                 e.preventDefault();
                 window.scrollTo(0, 0);
               }}
-              className="inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-text-primary text-text-primary transition-colors"
+              className="inline-flex items-center py-1 border-b border-text-primary text-text-primary transition-colors cursor-pointer"
             >
-              Home
+              HOME
             </Link>
-            <Link
-              href="/login?mode=signin&redirect=/workspace"
-              className="inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-transparent text-text-secondary hover:text-text-primary hover:border-noir transition-colors"
+
+            {/* Reports (Triggers Sign In Modal instead of 404) */}
+            <button
+              type="button"
+              onClick={() => setIsSignInOpen(true)}
+              className="inline-flex items-center py-1 border-b border-transparent text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
             >
-              Reports
-            </Link>
+              REPORTS
+            </button>
+
+            {/* Docs */}
             <button
               type="button"
               onClick={() => setIsDocsOpen(true)}
-              className="inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-transparent text-text-secondary hover:text-text-primary hover:border-noir uppercase font-bold text-xs tracking-widest transition-colors cursor-pointer"
+              className="inline-flex items-center py-1 border-b border-transparent text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
             >
-              Docs
+              DOCS
             </button>
-            <Link
-              href="/login?mode=signin&redirect=/workspace"
-              className="inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-transparent text-text-secondary hover:text-text-primary hover:border-noir transition-colors"
+
+            {/* Sign In */}
+            <button
+              type="button"
+              onClick={() => setIsSignInOpen(true)}
+              className="inline-flex items-center py-1 border-b border-transparent text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
             >
-              Sign In
-            </Link>
+              SIGN IN
+            </button>
+
+            {/* Community */}
             <a
               href="https://github.com"
               target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center h-8 leading-none pb-0.5 border-b-2 border-transparent text-text-secondary hover:text-text-primary hover:border-noir transition-colors"
+              rel="noreferrer"
+              className="inline-flex items-center py-1 border-b border-transparent text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
             >
-              Community
+              COMMUNITY
             </a>
           </div>
 
-          {/* Right: Theme Toggle & NEW REPORT Primary Button */}
+          {/* Right: Actions & Theme Controls */}
           <div className="flex items-center gap-3">
-            <div className="hidden md:inline-flex">
+            <div className="hidden sm:inline-flex">
               <ThemeToggle />
             </div>
-            <Link
-              href="/login?mode=signup&redirect=/workspace"
-              className="inline-flex items-center justify-center rounded bg-accent-contrast px-3 py-1.5 text-xs font-mono font-bold uppercase tracking-wider text-bg-canvas hover:opacity-90 transition-opacity shadow-none whitespace-nowrap"
+            {/* New Report (Triggers Sign In Modal before granting workspace access) */}
+            <button
+              type="button"
+              onClick={() => setIsSignInOpen(true)}
+              className="inline-flex items-center justify-center px-3.5 py-1.5 text-xs font-mono font-medium uppercase tracking-wider rounded border border-noir bg-text-primary text-bg-canvas hover:opacity-90 transition-opacity shadow-none cursor-pointer"
             >
-              New Report
-            </Link>
+              NEW REPORT
+            </button>
           </div>
         </div>
       </nav>
