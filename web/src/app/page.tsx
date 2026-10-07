@@ -16,6 +16,7 @@ export default function LandingPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDocsOpen, setIsDocsOpen] = useState(false);
   const [isSignInOpen, setIsSignInOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<"signin" | "signup">("signin");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
 
@@ -304,58 +305,127 @@ export default function LandingPage() {
 
       {/* Sign In Modal */}
       {isSignInOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#12100e]/80 p-4 backdrop-blur-sm">
-          <div className="relative w-full max-w-sm rounded-xl border border-noir bg-bg-surface p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-md bg-[#0b0907] border border-[#2a221b] rounded-lg p-6 sm:p-8 shadow-2xl overflow-hidden">
+            {/* Background Ambient Glow */}
+            <div
+              className="pointer-events-none absolute inset-0 select-none opacity-40"
+              style={{
+                background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(184, 155, 130, 0.08) 0%, rgba(12, 10, 8, 0) 70%)"
+              }}
+            />
+
+            {/* Top Close Button */}
             <button
+              type="button"
               onClick={() => setIsSignInOpen(false)}
-              className="absolute right-4 top-4 text-text-secondary hover:text-text-primary cursor-pointer"
-              aria-label="Close sign in modal"
+              className="absolute top-5 right-5 text-[#8c7b6e] hover:text-[#f2ede4] transition-colors cursor-pointer text-lg leading-none"
             >
-              <X className="h-5 w-5" />
+              ✕
             </button>
-            <div className="flex items-center gap-2 mb-1">
-              <Lock className="h-4 w-4 text-text-secondary" />
-              <span className="font-display text-lg font-bold uppercase tracking-tight text-text-primary">
-                Sign In to Black Swan
-              </span>
+
+            {/* Header Badge */}
+            <div className="inline-block mb-3 px-2 py-0.5 border border-[#2a221b] bg-[#13100d] rounded text-[10px] font-mono tracking-wider text-[#b89b82] uppercase">
+              AGENTIC AI FINANCIAL INTELLIGENCE
             </div>
-            <p className="font-body text-xs text-text-muted mb-4">
-              Enter your corporate credentials to access the FP&A Intelligence Workspace.
+
+            {/* Dynamic Title & Subtitle */}
+            <h2 className="font-mono text-2xl font-bold tracking-tight text-[#f2ede4] uppercase mb-1">
+              {modalMode === "signup" ? "WELCOME!" : "WELCOME BACK!"}
+            </h2>
+            <p className="font-mono text-xs text-[#8c7b6e] mb-6">
+              Verify corporate credentials to access workspace ledger.
             </p>
-            <form onSubmit={handleSignInSubmit} className="space-y-3">
+
+            {/* Tabs */}
+            <div className="flex items-center gap-4 border-b border-[#221c17] pb-3 mb-6 font-mono text-xs tracking-wider">
+              <button
+                type="button"
+                onClick={() => setModalMode("signin")}
+                className={`cursor-pointer transition-colors pb-1 ${
+                  modalMode === "signin"
+                    ? "text-[#f2ede4] border-b-2 border-[#d97746]"
+                    : "text-[#8c7b6e] hover:text-[#f2ede4]"
+                }`}
+              >
+                [ SIGN IN ]
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalMode("signup")}
+                className={`cursor-pointer transition-colors pb-1 ${
+                  modalMode === "signup"
+                    ? "text-[#f2ede4] border-b-2 border-[#d97746]"
+                    : "text-[#8c7b6e] hover:text-[#f2ede4]"
+                }`}
+              >
+                [ SIGN UP ]
+              </button>
+            </div>
+
+            {/* Form Fields */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                window.location.href = "/workspace";
+              }}
+              className="space-y-4"
+            >
+              {modalMode === "signup" && (
+                <div>
+                  <label className="block font-mono text-[10px] uppercase tracking-wider text-[#8c7b6e] mb-1.5">
+                    Organization / Firm
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Apex Strategic Partners"
+                    className="w-full bg-[#13100d] border border-[#2a221b] text-[#f2ede4] font-mono text-xs px-3.5 py-2.5 rounded placeholder-[#8c7b6e]/50 focus:border-[#b89b82]/60 focus:outline-none transition-colors"
+                  />
+                </div>
+              )}
+
               <div>
-                <label className="block font-body text-[11px] font-bold uppercase tracking-wider text-text-secondary mb-1">
-                  Email
+                <label className="block font-mono text-[10px] uppercase tracking-wider text-[#8c7b6e] mb-1.5">
+                  Work Email
                 </label>
                 <input
                   type="email"
+                  defaultValue="analyst@firm.com"
+                  className="w-full bg-[#13100d] border border-[#2a221b] text-[#f2ede4] font-mono text-xs px-3.5 py-2.5 rounded placeholder-[#8c7b6e]/50 focus:border-[#b89b82]/60 focus:outline-none transition-colors"
                   required
-                  placeholder="analyst@firm.com"
-                  value={authEmail}
-                  onChange={(e) => setAuthEmail(e.target.value)}
-                  className="w-full rounded border border-noir bg-bg-surface-subtle px-3 py-2 font-body text-xs text-text-primary focus:border-text-secondary focus:outline-none"
                 />
               </div>
+
               <div>
-                <label className="block font-body text-[11px] font-bold uppercase tracking-wider text-text-secondary mb-1">
-                  Password
+                <label className="block font-mono text-[10px] uppercase tracking-wider text-[#8c7b6e] mb-1.5">
+                  Security Key / Password
                 </label>
                 <input
                   type="password"
+                  defaultValue="••••••••••••"
+                  className="w-full bg-[#13100d] border border-[#2a221b] text-[#f2ede4] font-mono text-xs px-3.5 py-2.5 rounded placeholder-[#8c7b6e]/50 focus:border-[#b89b82]/60 focus:outline-none transition-colors"
                   required
-                  placeholder="••••••••••••"
-                  value={authPassword}
-                  onChange={(e) => setAuthPassword(e.target.value)}
-                  className="w-full rounded border border-noir bg-bg-surface-subtle px-3 py-2 font-body text-xs text-text-primary focus:border-text-secondary focus:outline-none"
                 />
               </div>
+
               <button
                 type="submit"
-                className="w-full rounded bg-accent-contrast py-2.5 font-body text-xs font-bold uppercase tracking-wider text-bg-canvas hover:opacity-90 transition-opacity mt-2 cursor-pointer"
+                className="w-full mt-2 bg-[#1c1612] hover:bg-[#251e18] text-[#f2ede4] border border-[#3d3126] hover:border-[#b89b82]/40 font-mono text-xs tracking-widest py-3 rounded uppercase transition-colors cursor-pointer"
               >
-                Sign In & Enter Workspace
+                {modalMode === "signup" ? "CREATE ACCOUNT →" : "AUTHENTICATE →"}
               </button>
             </form>
+
+            {/* Guest Sandbox Link */}
+            <div className="mt-6 text-center">
+              <Link
+                href="/workspace"
+                onClick={() => setIsSignInOpen(false)}
+                className="font-mono text-xs text-[#8c7b6e] hover:text-[#f2ede4] transition-colors"
+              >
+                [ Continue via Guest Sandbox → ]
+              </Link>
+            </div>
           </div>
         </div>
       )}
